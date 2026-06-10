@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Deals & Average Prices — GarbageP2P</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="assets/img/favicon.svg">
+</head>
+<body data-page="deals">
+<noscript><div class="noscript-warn">This demo needs JavaScript enabled.</div></noscript>
+<div id="gp-header"></div>
+
+<main class="gp-main">
+  <div class="bg-soft-green py-4">
+    <div class="container">
+      <h1 class="section-title mb-1">📈 Live deals &amp; market averages</h1>
+      <p class="text-muted-2 mb-0">Every closed deal is public. Averages use a <strong>recency-weighted formula</strong> — recent trades count more (weight halves every 30 days, over a 90-day window).</p>
+    </div>
+  </div>
+
+  <div class="container py-4">
+    <h5 class="fw-bold mb-3">Recent average price by material <span class="live-dot"></span></h5>
+    <div class="row g-3 mb-2" id="avg-cards"></div>
+  </div>
+
+  <div class="container pb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+      <h5 class="fw-bold mb-0">Deal history <span class="text-muted-2 fw-normal" id="deal-count"></span></h5>
+      <select id="cat-filter" class="form-select form-select-sm" style="max-width:240px"><option value="">All materials</option></select>
+    </div>
+    <div class="gp-card p-0 overflow-hidden"><div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light"><tr><th>Material</th><th>Final price</th><th>Per kg</th><th>Quantity</th><th class="text-end">Deal value</th><th>Parties</th><th class="text-end">Closed</th></tr></thead>
+        <tbody id="deal-rows"></tbody>
+      </table>
+    </div></div>
+  </div>
+</main>
+
+<div id="gp-footer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/util.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+(async function () {
+  await Store.ready;
+  const cats = Store.categories();
+  GP.qs('#cat-filter').innerHTML += cats.map(c => `<option value="${c.id}">${c.icon} ${GP.esc(c.name)}</option>`).join('');
+  const preCat = GP.param('category') || '';
+  GP.qs('#cat-filter').value = preCat;
+
+  function renderAverages() {
+    const avg = Store.averages();
+    GP.qs('#avg-cards').innerHTML = cats.map(c => {
+      const x = avg[c.id]; if (!x || x.avg <= 0) return '';
+      return `<div class="col-6 col-md-4 col-lg-3"><a href="?category=${c.id}" class="text-decoration-none"><div class="gp-stat h-100">
+        <div class="fw-semibold text-dark">${c.icon} ${GP.esc(c.name)}</div>
+        <div class="n">${GP.money(x.avg)}<span class="fs-6 text-muted-2">/kg</span></div>
+        <div class="small text-muted-2">${GP.money(x.min)}–${GP.money(x.max)} · ${x.count} deals</div></div></a></div>`;
+    }).join('');
+  }
+
+  function renderTable(cid) {
+    const list = Store.deals(cid ? { category: cid } : {});
+    GP.qs('#deal-count').textContent = '(' + list.length + ')';
+    GP.qs('#deal-rows').innerHTML = list.length ? list.map(d => {
+      const seller = d.seller ? d.seller.name : 'Seller', buyer = d.buyer ? d.buyer.name : 'Buyer';
+      return `<tr class="deal-row ${d.source === 'local' ? 'table-success' : ''}">
+        <td>${d.category ? d.category.icon : '♻️'} <strong>${GP.esc(d.category ? d.category.name : 'Mixed')}</strong>${d.source === 'local' ? ' <span class="badge bg-success">your deal</span>' : ''}</td>
+        <td><span class="price-tag fs-6">${GP.money(d.final_price)}</span> <span class="unit-chip">/${d.price_unit}</span></td>
+        <td>${GP.money(d.unit_price_per_kg)}</td>
+        <td>${GP.tidy(d.weight)} ${d.weight_unit}</td>
+        <td class="text-end fw-semibold">${GP.money(d.total_amount)}</td>
+        <td class="small text-muted-2">${GP.esc(seller)} → ${GP.esc(buyer)}</td>
+        <td class="text-end text-muted-2 small">${GP.timeAgo(d.created_at)}</td></tr>`;
+    }).join('') : '<tr><td colspan="7" class="text-center text-muted-2 py-5">No deals yet in this category.</td></tr>';
+  }
+
+  renderAverages();
+  renderTable(preCat);
+  GP.qs('#cat-filter').addEventListener('change', e => {
+    const v = e.target.value;
+    history.replaceState(null, '', v ? '?category=' + v : 'deals.html');
+    renderTable(v);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Profile — GarbageP2P</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="assets/img/favicon.svg">
+</head>
+<body data-page="profile">
+<noscript><div class="noscript-warn">This demo needs JavaScript enabled.</div></noscript>
+<div id="gp-header"></div>
+
+<main class="gp-main">
+  <div class="container py-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-7">
+        <h1 class="section-title mb-1">Your demo profile</h1>
+        <p class="text-muted-2">No passwords, no sign-up — this is just a name and role kept in <em>your browser</em> so your posts and deals are attributed to you.</p>
+        <div class="gp-card p-4 p-md-5">
+          <form id="prof-form" class="row g-3">
+            <div class="col-md-6"><label class="form-label required">Display name</label><input id="p_name" class="form-control" required></div>
+            <div class="col-md-6"><label class="form-label">City</label><input id="p_city" class="form-control" value="Karachi"></div>
+            <div class="col-md-6"><label class="form-label">I want to…</label>
+              <select id="p_role" class="form-select"><option value="seller">Sell trash / scrap</option><option value="buyer">Buy scrap (dealer/recycler)</option><option value="both" selected>Both buy &amp; sell</option></select></div>
+            <div class="col-md-6"><label class="form-label">I am a…</label>
+              <select id="p_cat" class="form-select">
+                <option>Garbage Collector</option><option>Street Sweeper</option><option>Manual Sorter</option><option>Household</option><option>Scrap Dealer</option><option>Recycling Company</option><option>Other</option>
+              </select></div>
+            <div class="col-12"><button class="btn btn-success btn-lg w-100 fw-semibold">Save profile</button></div>
+          </form>
+          <hr class="my-4">
+          <div class="d-flex justify-content-between align-items-center">
+            <div><div class="fw-semibold">Reset demo data</div><div class="small text-muted-2">Clears your profile, posts, deals and bookings from this browser.</div></div>
+            <button class="btn btn-outline-danger" data-reset>Reset</button>
+          </div>
+        </div>
+        <p class="text-center mt-3"><a href="dashboard.html" class="link-green">→ View my activity</a></p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="gp-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/util.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+(function () {
+  const p = Store.profile();
+  if (p) { GP.qs('#p_name').value = p.name || ''; GP.qs('#p_city').value = p.city || 'Karachi'; GP.qs('#p_role').value = p.role || 'both'; GP.qs('#p_cat').value = p.category || 'Other'; }
+  GP.qs('#prof-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = GP.qs('#p_name').value.trim();
+    if (name.length < 2) { GP.toast('Please enter a display name.', 'error'); return; }
+    Store.setProfile({ name, city: GP.qs('#p_city').value.trim(), role: GP.qs('#p_role').value, category: GP.qs('#p_cat').value });
+    GP.toast('Profile saved!', 'success');
+    setTimeout(() => location.href = 'dashboard.html', 700);
+  });
+})();
+</script>
+</body>
+</html>

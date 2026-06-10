@@ -1,1349 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Umair Ahmed — Full-Stack Engineer</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@300;400;500&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0a0c;
-    --bg-soft: #111114;
-    --bg-card: #131318;
-    --line: rgba(255,255,255,0.08);
-    --line-strong: rgba(255,255,255,0.14);
-    --text: #ededf0;
-    --text-dim: #8a8a95;
-    --text-mute: #5a5a64;
-    --accent: #d4a574;        /* warm gold */
-    --accent-2: #6b8aff;      /* cool electric blue */
-    --accent-3: #c45a8a;      /* magenta */
-    --serif: 'Fraunces', serif;
-    --sans: 'Inter Tight', system-ui, sans-serif;
-    --mono: 'JetBrains Mono', monospace;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    font-weight: 300;
-    line-height: 1.6;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* Noise grain overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1000;
-    opacity: 0.04;
-    mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  /* Ambient glow */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -20%;
-    right: -10%;
-    width: 60vw;
-    height: 60vw;
-    background: radial-gradient(circle, rgba(212,165,116,0.08) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: -1;
-    animation: float 20s ease-in-out infinite;
-  }
-  @keyframes float {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(-5%, 5%); }
-  }
-
-  /* ---------- NAV ---------- */
-  nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 100;
-    padding: 20px 48px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    backdrop-filter: blur(12px);
-    background: rgba(10,10,12,0.6);
-    border-bottom: 1px solid var(--line);
-  }
-  .logo {
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: 18px;
-    letter-spacing: -0.02em;
-  }
-  .logo span { color: var(--accent); font-style: italic; }
-  .nav-links { display: flex; gap: 36px; }
-  .nav-links a {
-    color: var(--text-dim);
-    text-decoration: none;
-    font-size: 13px;
-    font-family: var(--mono);
-    transition: color 0.3s;
-    position: relative;
-  }
-  .nav-links a:hover { color: var(--text); }
-  .nav-links a::before {
-    content: counter(nav) '. ';
-    color: var(--accent);
-    font-size: 11px;
-  }
-  .nav-links { counter-reset: nav; }
-  .nav-links a { counter-increment: nav; }
-
-  /* ---------- LAYOUT ---------- */
-  section { padding: 120px 48px; max-width: 1400px; margin: 0 auto; }
-
-  .section-label {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--accent);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .section-label::before {
-    content: '';
-    width: 32px;
-    height: 1px;
-    background: var(--accent);
-  }
-  .section-title {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: clamp(36px, 5vw, 64px);
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    margin-bottom: 48px;
-    max-width: 800px;
-  }
-  .section-title em {
-    font-style: italic;
-    color: var(--accent);
-    font-weight: 300;
-  }
-
-  /* ---------- HERO ---------- */
-  .hero {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    position: relative;
-    padding-top: 100px;
-  }
-  .hero-meta {
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-mute);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-bottom: 60px;
-    border-top: 1px solid var(--line);
-    padding-top: 16px;
-  }
-  .hero h1 {
-    font-family: var(--serif);
-    font-weight: 300;
-    font-size: clamp(60px, 10vw, 160px);
-    line-height: 0.92;
-    letter-spacing: -0.045em;
-    margin-bottom: 32px;
-  }
-  .hero h1 .ital {
-    font-style: italic;
-    color: var(--accent);
-    font-weight: 300;
-  }
-  .hero-tag {
-    font-family: var(--serif);
-    font-size: clamp(20px, 2.2vw, 28px);
-    font-weight: 300;
-    color: var(--text-dim);
-    max-width: 680px;
-    line-height: 1.4;
-    margin-bottom: 60px;
-    font-style: italic;
-  }
-  .hero-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    border-top: 1px solid var(--line);
-    padding-top: 24px;
-  }
-  .hero-status {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  .pulse {
-    width: 8px; height: 8px;
-    background: #4ade80;
-    border-radius: 50%;
-    animation: pulse 2s ease-in-out infinite;
-    box-shadow: 0 0 12px #4ade80;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.85); }
-  }
-  .scroll-cue {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-mute);
-    letter-spacing: 0.2em;
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-  }
-
-  /* ---------- ABOUT ---------- */
-  .about-grid {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 80px;
-    align-items: start;
-  }
-  .about-body p {
-    font-family: var(--serif);
-    font-size: 22px;
-    font-weight: 300;
-    line-height: 1.5;
-    color: var(--text);
-    margin-bottom: 24px;
-    letter-spacing: -0.01em;
-  }
-  .about-body p:last-child { color: var(--text-dim); font-size: 18px; }
-  .stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1px;
-    background: var(--line);
-    border: 1px solid var(--line);
-  }
-  .stat {
-    background: var(--bg);
-    padding: 32px 24px;
-  }
-  .stat-num {
-    font-family: var(--serif);
-    font-size: 56px;
-    font-weight: 300;
-    color: var(--accent);
-    line-height: 1;
-    letter-spacing: -0.04em;
-  }
-  .stat-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-top: 8px;
-  }
-  .skills {
-    margin-top: 32px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .skill {
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 8px 14px;
-    border: 1px solid var(--line-strong);
-    border-radius: 999px;
-    color: var(--text-dim);
-    transition: all 0.3s;
-  }
-  .skill:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    transform: translateY(-2px);
-  }
-
-  /* ---------- PROJECTS ---------- */
-  .projects-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 32px;
-  }
-  .project {
-    position: relative;
-    aspect-ratio: 4/3;
-    overflow: hidden;
-    border: 1px solid var(--line);
-    background: var(--bg-card);
-    cursor: pointer;
-    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .project:hover { transform: translateY(-8px); border-color: var(--line-strong); }
-  .project-visual {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-  }
-  .project-info {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    padding: 32px;
-    background: linear-gradient(to top, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.8) 50%, transparent 100%);
-    z-index: 2;
-  }
-  .project-num {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--accent);
-    letter-spacing: 0.2em;
-    margin-bottom: 8px;
-  }
-  .project-title {
-    font-family: var(--serif);
-    font-size: 28px;
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-  }
-  .project-desc {
-    color: var(--text-dim);
-    font-size: 14px;
-    margin-bottom: 16px;
-    max-width: 90%;
-  }
-  .project-tech {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .project-tech span {
-    font-family: var(--mono);
-    font-size: 10px;
-    padding: 4px 10px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--line);
-    color: var(--text-dim);
-    letter-spacing: 0.05em;
-  }
-
-  /* Abstract visuals */
-  .v-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(40px);
-    opacity: 0.7;
-    animation: drift 8s ease-in-out infinite;
-  }
-  @keyframes drift {
-    0%, 100% { transform: translate(0,0) scale(1); }
-    50% { transform: translate(20px,-20px) scale(1.1); }
-  }
-  .v-mesh {
-    position: absolute;
-    inset: 0;
-    opacity: 0.5;
-  }
-
-  /* ---------- SHOWREEL ---------- */
-  .reel-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-  }
-  .reel-card {
-    position: relative;
-    aspect-ratio: 9/16;
-    background: var(--bg-card);
-    border: 1px solid var(--line);
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.5s;
-  }
-  .reel-card:hover { transform: scale(1.02); border-color: var(--accent); }
-  .reel-visual {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-  }
-  .reel-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 24px;
-    z-index: 2;
-  }
-  .reel-play {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 64px; height: 64px;
-    border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(8px);
-    background: rgba(255,255,255,0.05);
-    transition: all 0.3s;
-    z-index: 3;
-  }
-  .reel-card:hover .reel-play {
-    border-color: var(--accent);
-    background: rgba(212,165,116,0.1);
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  .reel-play::after {
-    content: '';
-    width: 0; height: 0;
-    border-left: 12px solid var(--text);
-    border-top: 8px solid transparent;
-    border-bottom: 8px solid transparent;
-    margin-left: 4px;
-  }
-  .reel-tag {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--accent);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-  .reel-title {
-    font-family: var(--serif);
-    font-size: 22px;
-    font-weight: 400;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-  }
-  .reel-meta {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--text-dim);
-    margin-top: 8px;
-  }
-
-  /* ---------- SERVICES ---------- */
-  .services-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-  }
-  .service {
-    border: 1px solid var(--line);
-    padding: 40px 32px;
-    background: var(--bg-soft);
-    position: relative;
-    transition: all 0.4s;
-  }
-  .service:hover { border-color: var(--line-strong); transform: translateY(-4px); }
-  .service.featured {
-    border-color: var(--accent);
-    background: linear-gradient(180deg, rgba(212,165,116,0.04) 0%, transparent 100%);
-  }
-  .service.featured::before {
-    content: 'Most Popular';
-    position: absolute;
-    top: -10px; right: 24px;
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    background: var(--accent);
-    color: var(--bg);
-    padding: 4px 12px;
-  }
-  .service-tier {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-  .service-name {
-    font-family: var(--serif);
-    font-size: 32px;
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-  }
-  .service-price {
-    font-family: var(--serif);
-    font-size: 20px;
-    font-style: italic;
-    color: var(--accent);
-    margin-bottom: 24px;
-  }
-  .service-desc {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin-bottom: 24px;
-    line-height: 1.6;
-  }
-  .service ul {
-    list-style: none;
-  }
-  .service li {
-    font-size: 13px;
-    color: var(--text);
-    padding: 10px 0;
-    border-top: 1px solid var(--line);
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .service li::before {
-    content: '→';
-    color: var(--accent);
-    font-family: var(--mono);
-    flex-shrink: 0;
-  }
-
-  /* ---------- TESTIMONIALS ---------- */
-  .testimonials {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
-  }
-  .testimonial {
-    padding: 40px;
-    border: 1px solid var(--line);
-    background: var(--bg-soft);
-    position: relative;
-  }
-  .testimonial::before {
-    content: '"';
-    position: absolute;
-    top: 0; left: 24px;
-    font-family: var(--serif);
-    font-size: 120px;
-    line-height: 1;
-    color: var(--accent);
-    opacity: 0.3;
-  }
-  .testimonial-quote {
-    font-family: var(--serif);
-    font-size: 19px;
-    font-weight: 300;
-    line-height: 1.5;
-    color: var(--text);
-    margin-bottom: 32px;
-    font-style: italic;
-    position: relative;
-    z-index: 2;
-  }
-  .testimonial-author {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    border-top: 1px solid var(--line);
-    padding-top: 20px;
-  }
-  .author-avatar {
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .author-info { flex: 1; }
-  .author-name {
-    font-family: var(--sans);
-    font-weight: 500;
-    font-size: 14px;
-  }
-  .author-role {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 2px;
-  }
-  .rating {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--accent);
-    letter-spacing: 2px;
-  }
-
-  /* ---------- CONTACT ---------- */
-  .contact {
-    background: var(--bg-soft);
-    border-top: 1px solid var(--line);
-    padding: 120px 48px;
-  }
-  .contact-inner { max-width: 1400px; margin: 0 auto; }
-  .contact-grid {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 80px;
-    align-items: start;
-  }
-  .contact-cta {
-    font-family: var(--serif);
-    font-size: clamp(40px, 5vw, 72px);
-    font-weight: 300;
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    margin-bottom: 32px;
-  }
-  .contact-cta em { font-style: italic; color: var(--accent); }
-  .contact-text {
-    font-size: 17px;
-    color: var(--text-dim);
-    margin-bottom: 40px;
-    max-width: 500px;
-    line-height: 1.6;
-  }
-  .contact-links {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .contact-link {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 0;
-    border-top: 1px solid var(--line);
-    text-decoration: none;
-    color: var(--text);
-    transition: all 0.3s;
-    font-family: var(--mono);
-    font-size: 13px;
-  }
-  .contact-link:last-child { border-bottom: 1px solid var(--line); }
-  .contact-link:hover { padding-left: 12px; color: var(--accent); }
-  .contact-link span:last-child { color: var(--text-dim); }
-  .contact-link:hover span:last-child { color: var(--accent); }
-
-  /* Form */
-  .contact-form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  .form-field {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .form-field label {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-  }
-  .form-field input,
-  .form-field textarea {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--line-strong);
-    padding: 12px 0;
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 15px;
-    outline: none;
-    transition: border-color 0.3s;
-    resize: none;
-  }
-  .form-field input:focus,
-  .form-field textarea:focus { border-color: var(--accent); }
-  .form-field textarea { min-height: 100px; }
-  .submit-btn {
-    margin-top: 16px;
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    padding: 18px 32px;
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.3s;
-    align-self: flex-start;
-  }
-  .submit-btn:hover {
-    background: var(--text);
-    transform: translateY(-2px);
-  }
-
-  /* Footer */
-  footer {
-    padding: 32px 48px;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-mute);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-  }
-
-  /* Reveal animations */
-  .reveal {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .reveal.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* Responsive */
-  @media (max-width: 900px) {
-    nav { padding: 16px 24px; }
-    .nav-links { display: none; }
-    section { padding: 80px 24px; }
-    .about-grid, .contact-grid { grid-template-columns: 1fr; gap: 48px; }
-    .projects-grid, .reel-grid, .services-grid, .testimonials { grid-template-columns: 1fr; }
-    .hero-meta { flex-wrap: wrap; gap: 12px; font-size: 10px; }
-    .scroll-cue { display: none; }
-    .contact { padding: 80px 24px; }
-    footer { flex-direction: column; gap: 12px; padding: 24px; text-align: center; }
-  }
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GarbageP2P — Sell & Buy Scrap Directly</title>
+<meta name="description" content="Pakistan's peer-to-peer scrap & recycling marketplace.">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="assets/img/favicon.svg">
 </head>
-<body>
+<body data-page="index">
+<noscript><div class="noscript-warn">This demo needs JavaScript enabled to load its data.</div></noscript>
+<div id="gp-header"></div>
 
-<nav>
-  <div class="logo">Umair <span>Ahmed.</span></div>
-  <div class="nav-links">
-    <a href="#about">About</a>
-    <a href="#work">Work</a>
-    <a href="#reel">Reel</a>
-    <a href="#services">Services</a>
-    <a href="#contact">Contact</a>
-  </div>
-</nav>
-
-<!-- ============ HERO ============ -->
-<section class="hero" id="top">
-  <div class="hero-meta">
-    <span>Full-Stack Engineer</span>
-    <span>Est. 2017</span>
-    <span>Remote — Worldwide</span>
-    <span>Portfolio · MMXXVI</span>
-  </div>
-
-  <h1>
-    Building <span class="ital">thoughtful</span><br/>
-    software, <span class="ital">precisely</span>.
-  </h1>
-
-  <p class="hero-tag">
-    Full-stack engineer crafting fast, thoughtful web products tailored to client requirements — from algorithmic trading systems to AI-driven applications.
-  </p>
-
-  <div class="hero-bottom">
-    <div class="hero-status">
-      <span class="pulse"></span>
-      <span>Available for new projects · Q3 2026</span>
-    </div>
-    <div class="scroll-cue">SCROLL ↓</div>
-  </div>
-</section>
-
-<!-- ============ ABOUT ============ -->
-<section id="about">
-  <div class="section-label">01 — About</div>
-  <h2 class="section-title">Nine years of shipping software <em>that performs</em>.</h2>
-
-  <div class="about-grid">
-    <div class="about-body reveal">
-      <p>I'm a full-stack engineer with industry experience at companies like <strong style="color:var(--accent);font-weight:500">Alachisoft / Diyatech</strong> and <strong style="color:var(--accent);font-weight:500">Knowledge Platform</strong> — but for most of my career, I've worked remotely with clients worldwide through Fiverr and Upwork since 2017.</p>
-      <p>My work spans web development, MT4/MT5 and TradingView indicator and EA development, mobile applications for iOS and Android, desktop software, Python-based data scraping and analysis, and the training and deployment of custom AI models — built around what each client actually needs.</p>
-
-      <div class="skills">
-        <span class="skill">React</span>
-        <span class="skill">Next.js</span>
-        <span class="skill">Node.js</span>
-        <span class="skill">Python</span>
-        <span class="skill">MQL4 / MQL5</span>
-        <span class="skill">Pine Script</span>
-        <span class="skill">React Native</span>
-        <span class="skill">Flutter</span>
-        <span class="skill">Electron</span>
-        <span class="skill">TensorFlow</span>
-        <span class="skill">PyTorch</span>
-        <span class="skill">PostgreSQL</span>
-        <span class="skill">MongoDB</span>
-        <span class="skill">Docker</span>
-        <span class="skill">AWS</span>
-      </div>
-    </div>
-
-    <div class="stats reveal">
-      <div class="stat">
-        <div class="stat-num">9+</div>
-        <div class="stat-label">Years Experience</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">200+</div>
-        <div class="stat-label">Projects Shipped</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">5★</div>
-        <div class="stat-label">Client Rating</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">∞</div>
-        <div class="stat-label">Cups of Chai</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ PROJECTS ============ -->
-<section id="work">
-  <div class="section-label">02 — Selected Work</div>
-  <h2 class="section-title">A curated set of <em>recent builds</em>.</h2>
-
-  <div class="projects-grid">
-
-    <!-- Project 1: Trading Bot -->
-    <div class="project reveal">
-      <div class="project-visual">
-        <svg width="100%" height="100%" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
-          <defs>
-            <radialGradient id="g1a" cx="30%" cy="40%">
-              <stop offset="0%" stop-color="#d4a574" stop-opacity="0.8"/>
-              <stop offset="100%" stop-color="#d4a574" stop-opacity="0"/>
-            </radialGradient>
-            <radialGradient id="g1b" cx="70%" cy="60%">
-              <stop offset="0%" stop-color="#6b8aff" stop-opacity="0.6"/>
-              <stop offset="100%" stop-color="#6b8aff" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="line1" x1="0" y1="50%" x2="100%" y2="50%">
-              <stop offset="0%" stop-color="#d4a574" stop-opacity="0"/>
-              <stop offset="50%" stop-color="#d4a574" stop-opacity="1"/>
-              <stop offset="100%" stop-color="#d4a574" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <rect width="600" height="450" fill="#0a0a0c"/>
-          <circle cx="180" cy="180" r="200" fill="url(#g1a)"/>
-          <circle cx="420" cy="270" r="180" fill="url(#g1b)"/>
-          <!-- Candlestick chart abstract -->
-          <g opacity="0.6" transform="translate(60, 180)">
-            <line x1="0" y1="40" x2="40" y2="0" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="40" y1="0" x2="80" y2="60" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="80" y1="60" x2="120" y2="30" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="120" y1="30" x2="160" y2="80" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="160" y1="80" x2="200" y2="20" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="200" y1="20" x2="240" y2="50" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="240" y1="50" x2="280" y2="10" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="280" y1="10" x2="320" y2="40" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="320" y1="40" x2="360" y2="-10" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="360" y1="-10" x2="400" y2="20" stroke="#d4a574" stroke-width="1.5"/>
-            <line x1="400" y1="20" x2="440" y2="-30" stroke="#d4a574" stroke-width="1.5"/>
-            <circle cx="440" cy="-30" r="4" fill="#d4a574"/>
-          </g>
-        </svg>
-      </div>
-      <div class="project-info">
-        <div class="project-num">PROJECT 001</div>
-        <h3 class="project-title">QuantPulse — MT5 EA</h3>
-        <p class="project-desc">A multi-strategy Expert Advisor for MetaTrader 5 with adaptive risk management and real-time TradingView signal integration.</p>
-        <div class="project-tech">
-          <span>MQL5</span><span>Python</span><span>WebSocket</span><span>TradingView API</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Project 2: AI Platform -->
-    <div class="project reveal">
-      <div class="project-visual">
-        <svg width="100%" height="100%" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
-          <defs>
-            <radialGradient id="g2a" cx="50%" cy="50%">
-              <stop offset="0%" stop-color="#c45a8a" stop-opacity="0.7"/>
-              <stop offset="100%" stop-color="#c45a8a" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <rect width="600" height="450" fill="#0a0a0c"/>
-          <circle cx="300" cy="225" r="220" fill="url(#g2a)"/>
-          <!-- Neural network nodes -->
-          <g opacity="0.7">
-            <!-- Layer 1 -->
-            <circle cx="120" cy="120" r="4" fill="#c45a8a"/>
-            <circle cx="120" cy="225" r="4" fill="#c45a8a"/>
-            <circle cx="120" cy="330" r="4" fill="#c45a8a"/>
-            <!-- Layer 2 -->
-            <circle cx="300" cy="90" r="4" fill="#fff"/>
-            <circle cx="300" cy="180" r="4" fill="#fff"/>
-            <circle cx="300" cy="270" r="4" fill="#fff"/>
-            <circle cx="300" cy="360" r="4" fill="#fff"/>
-            <!-- Layer 3 -->
-            <circle cx="480" cy="150" r="4" fill="#c45a8a"/>
-            <circle cx="480" cy="225" r="4" fill="#c45a8a"/>
-            <circle cx="480" cy="300" r="4" fill="#c45a8a"/>
-            <!-- Connections -->
-            <g stroke="#c45a8a" stroke-width="0.5" opacity="0.4">
-              <line x1="120" y1="120" x2="300" y2="90"/>
-              <line x1="120" y1="120" x2="300" y2="180"/>
-              <line x1="120" y1="120" x2="300" y2="270"/>
-              <line x1="120" y1="225" x2="300" y2="90"/>
-              <line x1="120" y1="225" x2="300" y2="180"/>
-              <line x1="120" y1="225" x2="300" y2="270"/>
-              <line x1="120" y1="225" x2="300" y2="360"/>
-              <line x1="120" y1="330" x2="300" y2="180"/>
-              <line x1="120" y1="330" x2="300" y2="270"/>
-              <line x1="120" y1="330" x2="300" y2="360"/>
-              <line x1="300" y1="90" x2="480" y2="150"/>
-              <line x1="300" y1="180" x2="480" y2="150"/>
-              <line x1="300" y1="180" x2="480" y2="225"/>
-              <line x1="300" y1="270" x2="480" y2="225"/>
-              <line x1="300" y1="270" x2="480" y2="300"/>
-              <line x1="300" y1="360" x2="480" y2="300"/>
-            </g>
-          </g>
-        </svg>
-      </div>
-      <div class="project-info">
-        <div class="project-num">PROJECT 002</div>
-        <h3 class="project-title">Lumen AI Studio</h3>
-        <p class="project-desc">A SaaS platform for training and deploying custom ML models with a no-code interface, REST API, and live inference endpoints.</p>
-        <div class="project-tech">
-          <span>Next.js</span><span>FastAPI</span><span>PyTorch</span><span>AWS</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Project 3: Scraper -->
-    <div class="project reveal">
-      <div class="project-visual">
-        <svg width="100%" height="100%" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
-          <defs>
-            <linearGradient id="g3a" x1="0" y1="0" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#6b8aff" stop-opacity="0.6"/>
-              <stop offset="100%" stop-color="#6b8aff" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <rect width="600" height="450" fill="#0a0a0c"/>
-          <!-- Floating cubes 3D -->
-          <g opacity="0.8" transform="translate(150, 100)">
-            <!-- Cube 1 -->
-            <polygon points="80,40 130,15 180,40 180,90 130,115 80,90" fill="none" stroke="#6b8aff" stroke-width="1"/>
-            <polygon points="80,40 130,65 130,115" fill="none" stroke="#6b8aff" stroke-width="1"/>
-            <polygon points="130,65 180,40" fill="none" stroke="#6b8aff" stroke-width="1"/>
-            <!-- Cube 2 -->
-            <polygon points="220,140 270,115 320,140 320,190 270,215 220,190" fill="none" stroke="#d4a574" stroke-width="1"/>
-            <polygon points="220,140 270,165 270,215" fill="none" stroke="#d4a574" stroke-width="1"/>
-            <polygon points="270,165 320,140" fill="none" stroke="#d4a574" stroke-width="1"/>
-            <!-- Cube 3 -->
-            <polygon points="40,200 90,175 140,200 140,250 90,275 40,250" fill="none" stroke="#6b8aff" stroke-width="1"/>
-            <polygon points="40,200 90,225 90,275" fill="none" stroke="#6b8aff" stroke-width="1"/>
-            <polygon points="90,225 140,200" fill="none" stroke="#6b8aff" stroke-width="1"/>
-          </g>
-          <circle cx="450" cy="100" r="180" fill="url(#g3a)"/>
-        </svg>
-      </div>
-      <div class="project-info">
-        <div class="project-num">PROJECT 003</div>
-        <h3 class="project-title">Harvester</h3>
-        <p class="project-desc">Large-scale Python data scraping framework with proxy rotation, anti-bot evasion, and an analytics dashboard for visualizing collected datasets.</p>
-        <div class="project-tech">
-          <span>Python</span><span>Scrapy</span><span>Playwright</span><span>PostgreSQL</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Project 4: Mobile App -->
-    <div class="project reveal">
-      <div class="project-visual">
-        <svg width="100%" height="100%" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
-          <defs>
-            <linearGradient id="g4a" x1="0" y1="0" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#4ade80" stop-opacity="0.5"/>
-              <stop offset="100%" stop-color="#6b8aff" stop-opacity="0.5"/>
-            </linearGradient>
-            <radialGradient id="g4b" cx="50%" cy="50%">
-              <stop offset="0%" stop-color="#fff" stop-opacity="0.2"/>
-              <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <rect width="600" height="450" fill="#0a0a0c"/>
-          <circle cx="300" cy="225" r="280" fill="url(#g4b)"/>
-          <!-- Torus / ring -->
-          <ellipse cx="300" cy="225" rx="180" ry="50" fill="none" stroke="url(#g4a)" stroke-width="2" opacity="0.8"/>
-          <ellipse cx="300" cy="225" rx="180" ry="50" fill="none" stroke="url(#g4a)" stroke-width="1" opacity="0.5" transform="rotate(25 300 225)"/>
-          <ellipse cx="300" cy="225" rx="180" ry="50" fill="none" stroke="url(#g4a)" stroke-width="1" opacity="0.5" transform="rotate(-25 300 225)"/>
-          <ellipse cx="300" cy="225" rx="180" ry="50" fill="none" stroke="url(#g4a)" stroke-width="1" opacity="0.3" transform="rotate(55 300 225)"/>
-          <ellipse cx="300" cy="225" rx="180" ry="50" fill="none" stroke="url(#g4a)" stroke-width="1" opacity="0.3" transform="rotate(-55 300 225)"/>
-          <circle cx="300" cy="225" r="30" fill="#d4a574" opacity="0.9"/>
-          <circle cx="300" cy="225" r="50" fill="none" stroke="#d4a574" stroke-width="0.5" opacity="0.4"/>
-        </svg>
-      </div>
-      <div class="project-info">
-        <div class="project-num">PROJECT 004</div>
-        <h3 class="project-title">Orbit Mobile</h3>
-        <p class="project-desc">Cross-platform iOS and Android fitness companion with offline-first sync, biometric tracking, and adaptive AI workout plans.</p>
-        <div class="project-tech">
-          <span>React Native</span><span>Swift</span><span>Kotlin</span><span>Supabase</span>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ============ SHOWREEL ============ -->
-<section id="reel">
-  <div class="section-label">03 — Showreel</div>
-  <h2 class="section-title">Motion, interaction, <em>and demos</em>.</h2>
-
-  <div class="reel-grid">
-
-    <!-- Reel 1 -->
-    <div class="reel-card reveal">
-      <div class="reel-visual">
-        <svg width="100%" height="100%" viewBox="0 0 360 640" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
-          <defs>
-            <linearGradient id="r1" x1="0" y1="0" x2="0" y2="100%">
-              <stop offset="0%" stop-color="#d4a574" stop-opacity="0.4"/>
-              <stop offset="100%" stop-color="#0a0a0c" stop-opacity="1"/>
-            </linearGradient>
-          </defs>
-          <rect width="360" height="640" fill="#0a0a0c"/>
-          <rect width="360" height="640" fill="url(#r1)"/>
-          <!-- Animated waveform -->
-          <g stroke="#d4a574" stroke-width="1.5" fill="none" opacity="0.7">
-            <path d="M0,320 Q60,180 120,320 T240,320 T360,320"/>
-            <path d="M0,320 Q60,260 120,320 T240,320 T360,320" opacity="0.5"/>
-            <path d="M0,320 Q60,380 120,320 T240,320 T360,320" opacity="0.5"/>
-          </g>
-          <circle cx="180" cy="320" r="80" fill="none" stroke="#d4a574" stroke-width="0.5" opacity="0.3"/>
-          <circle cx="180" cy="320" r="120" fill="none" stroke="#d4a574" stroke-width="0.5" opacity="0.2"/>
-          <circle cx="180" cy="320" r="160" fill="none" stroke="#d4a574" stroke-width="0.5" opacity="0.1"/>
-        </svg>
-      </div>
-      <div class="reel-play"></div>
-      <div class="reel-overlay">
-        <div class="reel-tag">Trading · 00:42</div>
-        <div class="reel-title">QuantPulse Live Demo</div>
-        <div class="reel-meta">MT5 backtesting walkthrough</div>
-      </div>
-    </div>
-
-    <!-- Reel 2 -->
-    <div class="reel-card reveal">
-      <div class="reel-visual">
-        <svg width="100%" height="100%" viewBox="0 0 360 640" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
-          <defs>
-            <radialGradient id="r2" cx="50%" cy="40%">
-              <stop offset="0%" stop-color="#c45a8a" stop-opacity="0.6"/>
-              <stop offset="100%" stop-color="#0a0a0c" stop-opacity="1"/>
-            </radialGradient>
-          </defs>
-          <rect width="360" height="640" fill="url(#r2)"/>
-          <!-- Concentric squares rotated -->
-          <g transform="translate(180, 320)" opacity="0.6">
-            <rect x="-80" y="-80" width="160" height="160" fill="none" stroke="#c45a8a" stroke-width="1" transform="rotate(0)"/>
-            <rect x="-80" y="-80" width="160" height="160" fill="none" stroke="#c45a8a" stroke-width="1" transform="rotate(15)" opacity="0.7"/>
-            <rect x="-80" y="-80" width="160" height="160" fill="none" stroke="#c45a8a" stroke-width="1" transform="rotate(30)" opacity="0.5"/>
-            <rect x="-80" y="-80" width="160" height="160" fill="none" stroke="#c45a8a" stroke-width="1" transform="rotate(45)" opacity="0.3"/>
-            <rect x="-40" y="-40" width="80" height="80" fill="#c45a8a" opacity="0.2"/>
-          </g>
-        </svg>
-      </div>
-      <div class="reel-play"></div>
-      <div class="reel-overlay">
-        <div class="reel-tag">AI · 01:18</div>
-        <div class="reel-title">Lumen AI Walkthrough</div>
-        <div class="reel-meta">Custom model deployment flow</div>
-      </div>
-    </div>
-
-    <!-- Reel 3 -->
-    <div class="reel-card reveal">
-      <div class="reel-visual">
-        <svg width="100%" height="100%" viewBox="0 0 360 640" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
-          <defs>
-            <linearGradient id="r3" x1="0" y1="0" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#6b8aff" stop-opacity="0.4"/>
-              <stop offset="100%" stop-color="#0a0a0c" stop-opacity="1"/>
-            </linearGradient>
-          </defs>
-          <rect width="360" height="640" fill="url(#r3)"/>
-          <!-- Grid mesh -->
-          <g stroke="#6b8aff" stroke-width="0.5" opacity="0.4">
-            <line x1="0" y1="280" x2="360" y2="280"/>
-            <line x1="0" y1="320" x2="360" y2="320"/>
-            <line x1="0" y1="360" x2="360" y2="360"/>
-            <line x1="60" y1="220" x2="60" y2="420"/>
-            <line x1="120" y1="220" x2="120" y2="420"/>
-            <line x1="180" y1="220" x2="180" y2="420"/>
-            <line x1="240" y1="220" x2="240" y2="420"/>
-            <line x1="300" y1="220" x2="300" y2="420"/>
-          </g>
-          <g opacity="0.9">
-            <circle cx="120" cy="280" r="5" fill="#6b8aff"/>
-            <circle cx="180" cy="320" r="6" fill="#d4a574"/>
-            <circle cx="240" cy="360" r="5" fill="#6b8aff"/>
-            <circle cx="180" cy="360" r="4" fill="#fff"/>
-            <line x1="120" y1="280" x2="180" y2="320" stroke="#fff" stroke-width="0.5"/>
-            <line x1="180" y1="320" x2="240" y2="360" stroke="#fff" stroke-width="0.5"/>
-            <line x1="180" y1="320" x2="180" y2="360" stroke="#fff" stroke-width="0.5"/>
-          </g>
-        </svg>
-      </div>
-      <div class="reel-play"></div>
-      <div class="reel-overlay">
-        <div class="reel-tag">Data · 00:54</div>
-        <div class="reel-title">Harvester Pipeline</div>
-        <div class="reel-meta">Real-time scrape & visualization</div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ============ SERVICES ============ -->
-<section id="services">
-  <div class="section-label">04 — Services & Pricing</div>
-  <h2 class="section-title">Work together, <em>on your terms</em>.</h2>
-
-  <div class="services-grid">
-
-    <div class="service reveal">
-      <div class="service-tier">Tier 01</div>
-      <h3 class="service-name">Starter</h3>
-      <div class="service-price">from <em>$500</em></div>
-      <p class="service-desc">Quick-turn projects, MVPs, and focused feature builds. Ideal for solopreneurs and early-stage startups.</p>
-      <ul>
-        <li>Landing pages & static sites</li>
-        <li>Single TradingView indicator</li>
-        <li>Python scripts & automation</li>
-        <li>1 week turnaround</li>
-        <li>Email support</li>
-      </ul>
-    </div>
-
-    <div class="service featured reveal">
-      <div class="service-tier">Tier 02</div>
-      <h3 class="service-name">Professional</h3>
-      <div class="service-price">from <em>$2,500</em></div>
-      <p class="service-desc">Full-scale web platforms, custom EAs, and AI-powered applications with end-to-end ownership.</p>
-      <ul>
-        <li>Full-stack web applications</li>
-        <li>Multi-strategy MT4/MT5 EAs</li>
-        <li>iOS / Android mobile apps</li>
-        <li>AI model training & deployment</li>
-        <li>3–6 week delivery</li>
-        <li>Priority Slack support</li>
-      </ul>
-    </div>
-
-    <div class="service reveal">
-      <div class="service-tier">Tier 03</div>
-      <h3 class="service-name">Bespoke</h3>
-      <div class="service-price"><em>Let's talk</em></div>
-      <p class="service-desc">Long-term engagements, complex systems, and dedicated retainer arrangements for serious builders.</p>
-      <ul>
-        <li>End-to-end product engineering</li>
-        <li>Trading infrastructure at scale</li>
-        <li>Custom AI / ML pipelines</li>
-        <li>Team augmentation</li>
-        <li>Ongoing maintenance & SLA</li>
-        <li>Monthly retainer</li>
-      </ul>
-    </div>
-
-  </div>
-</section>
-
-<!-- ============ TESTIMONIALS ============ -->
-<section id="testimonials">
-  <div class="section-label">05 — Testimonials</div>
-  <h2 class="section-title">Words from <em>past collaborators</em>.</h2>
-
-  <div class="testimonials">
-
-    <div class="testimonial reveal">
-      <p class="testimonial-quote">Umair delivered a complex MT5 Expert Advisor on time and well beyond what we asked for. The risk module alone has saved us countless hedge errors. Genuinely one of the sharpest engineers we've hired on Upwork.</p>
-      <div class="testimonial-author">
-        <svg class="author-avatar" viewBox="0 0 44 44">
-          <defs><linearGradient id="a1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#d4a574"/><stop offset="100%" stop-color="#c45a8a"/></linearGradient></defs>
-          <circle cx="22" cy="22" r="22" fill="url(#a1)"/>
-        </svg>
-        <div class="author-info">
-          <div class="author-name">Marcus Voigt</div>
-          <div class="author-role">Founder · Northwind Capital</div>
-        </div>
-        <div class="rating">★★★★★</div>
-      </div>
-    </div>
-
-    <div class="testimonial reveal">
-      <p class="testimonial-quote">We came to Umair with a vague AI idea and a tight budget. He scoped it, shipped a working prototype in three weeks, and held our hand through deployment. Calm, communicative, and unbelievably thorough.</p>
-      <div class="testimonial-author">
-        <svg class="author-avatar" viewBox="0 0 44 44">
-          <defs><linearGradient id="a2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#6b8aff"/><stop offset="100%" stop-color="#d4a574"/></linearGradient></defs>
-          <circle cx="22" cy="22" r="22" fill="url(#a2)"/>
-        </svg>
-        <div class="author-info">
-          <div class="author-name">Aisha Rahman</div>
-          <div class="author-role">CTO · Loomly Labs</div>
-        </div>
-        <div class="rating">★★★★★</div>
-      </div>
-    </div>
-
-    <div class="testimonial reveal">
-      <p class="testimonial-quote">Hired Umair for a Python scraping job that grew into a full analytics dashboard. He kept scope honest, flagged issues early, and the final delivery felt like agency-grade work at a freelance price.</p>
-      <div class="testimonial-author">
-        <svg class="author-avatar" viewBox="0 0 44 44">
-          <defs><linearGradient id="a3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c45a8a"/><stop offset="100%" stop-color="#6b8aff"/></linearGradient></defs>
-          <circle cx="22" cy="22" r="22" fill="url(#a3)"/>
-        </svg>
-        <div class="author-info">
-          <div class="author-name">Daniel Okafor</div>
-          <div class="author-role">Lead Engineer · Pellet & Co.</div>
-        </div>
-        <div class="rating">★★★★★</div>
-      </div>
-    </div>
-
-    <div class="testimonial reveal">
-      <p class="testimonial-quote">Working with Umair for over two years now across three different mobile apps. Reliable, careful with details, and treats every project like it's his own. Hard to find that combination at this level.</p>
-      <div class="testimonial-author">
-        <svg class="author-avatar" viewBox="0 0 44 44">
-          <defs><linearGradient id="a4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4ade80"/><stop offset="100%" stop-color="#6b8aff"/></linearGradient></defs>
-          <circle cx="22" cy="22" r="22" fill="url(#a4)"/>
-        </svg>
-        <div class="author-info">
-          <div class="author-name">Sofía Mendes</div>
-          <div class="author-role">Product Lead · Kestrel Health</div>
-        </div>
-        <div class="rating">★★★★★</div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ============ CONTACT ============ -->
-<section class="contact" id="contact">
-  <div class="contact-inner">
-    <div class="section-label">06 — Contact</div>
-    <div class="contact-grid">
-
-      <div class="reveal">
-        <h2 class="contact-cta">Have a project<br/><em>in mind?</em></h2>
-        <p class="contact-text">Whether you need a trading algorithm built, a SaaS platform shipped, or an AI model deployed — I'd love to hear about what you're working on. Most projects start with a short call.</p>
-
-        <div class="contact-links">
-          <a class="contact-link" href="mailto:hello@umair.dev">
-            <span>Email</span><span>hello@umair.dev →</span>
-          </a>
-          <a class="contact-link" href="#">
-            <span>Upwork</span><span>upwork.com/freelancers/umair →</span>
-          </a>
-          <a class="contact-link" href="#">
-            <span>Fiverr</span><span>fiverr.com/umair_ahmed →</span>
-          </a>
-          <a class="contact-link" href="#">
-            <span>GitHub</span><span>github.com/umair-ahmed →</span>
-          </a>
-          <a class="contact-link" href="#">
-            <span>LinkedIn</span><span>linkedin.com/in/umair-ahmed →</span>
-          </a>
-        </div>
-      </div>
-
-      <form class="contact-form reveal" onsubmit="event.preventDefault(); alert('Message sent — I\'ll be in touch soon.');">
-        <div class="form-row">
-          <div class="form-field">
-            <label>Name</label>
-            <input type="text" placeholder="Your name" required/>
+<main class="gp-main">
+  <!-- HERO -->
+  <section class="gp-hero py-5">
+    <div class="container py-4">
+      <div class="row align-items-center g-5">
+        <div class="col-lg-6">
+          <span class="gp-pill mb-3"><span class="live-dot"></span> <span id="hero-open">…</span> live requests right now</span>
+          <h1 class="mb-3">Turn trash into cash — <span style="color:var(--gp-amber)">your price, your terms.</span></h1>
+          <p class="lead mb-4">GarbageP2P connects waste collectors, sweepers and sorters directly with scrap dealers &amp; recycling companies. Post what you want to sell or buy, share your live location, negotiate, and close the deal — no middleman.</p>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="post-request.html?type=sell" class="btn btn-warning btn-lg fw-semibold">♻️ Sell your trash</a>
+            <a href="post-request.html?type=buy" class="btn btn-outline-light btn-lg fw-semibold">🏭 I want to buy scrap</a>
           </div>
-          <div class="form-field">
-            <label>Email</label>
-            <input type="email" placeholder="you@company.com" required/>
+          <div class="d-flex gap-4 mt-4 small" id="hero-stats"></div>
+        </div>
+        <div class="col-lg-6">
+          <div class="gp-card p-4">
+            <h5 class="fw-bold mb-3">📈 Today's average scrap rates</h5>
+            <div class="row g-2" id="hero-rates"></div>
+            <a href="rates.html" class="btn btn-success w-100 mt-3">See all live rates →</a>
+            <p class="text-center text-muted-2 small mt-2 mb-0">Averaged from recent closed deals · recency-weighted</p>
           </div>
         </div>
-        <div class="form-field">
-          <label>Project Type</label>
-          <input type="text" placeholder="e.g. MT5 EA, web app, AI model..."/>
-        </div>
-        <div class="form-field">
-          <label>Budget Range</label>
-          <input type="text" placeholder="$2k – $10k"/>
-        </div>
-        <div class="form-field">
-          <label>Tell me about it</label>
-          <textarea placeholder="What are you building? What's the timeline?"></textarea>
-        </div>
-        <button type="submit" class="submit-btn">Send Message →</button>
-      </form>
-
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<footer>
-  <div>© 2026 Umair Ahmed</div>
-  <div>Crafted with intention · Remote — Worldwide</div>
-  <div>Back to top ↑</div>
-</footer>
+  <!-- HOW IT WORKS -->
+  <section class="container py-5">
+    <div class="text-center mb-5">
+      <h2 class="section-title">How GarbageP2P works</h2>
+      <p class="text-muted-2">Two ways to trade — a quick doorstep pickup, or the open peer-to-peer marketplace.</p>
+    </div>
+    <div class="row g-4" id="how-steps"></div>
+  </section>
 
+  <!-- CATEGORIES -->
+  <section class="bg-soft-green py-5">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-end mb-4">
+        <div><h2 class="section-title mb-1">What we trade</h2><p class="text-muted-2 mb-0">From household plastic to factory iron — pick a category to see live rates.</p></div>
+        <a href="rates.html" class="btn btn-outline-success">All categories</a>
+      </div>
+      <div class="row g-3" id="cat-grid"></div>
+    </div>
+  </section>
+
+  <!-- LATEST REQUESTS -->
+  <section class="container py-5">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+      <div><h2 class="section-title mb-1">Latest in the marketplace</h2><p class="text-muted-2 mb-0">Fresh buy &amp; sell requests from collectors and dealers.</p></div>
+      <a href="marketplace.html" class="btn btn-outline-success">Browse all</a>
+    </div>
+    <div class="row g-4" id="latest-req"></div>
+  </section>
+
+  <!-- RECENT DEALS -->
+  <section class="bg-soft-green py-5">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-end mb-4">
+        <div><h2 class="section-title mb-1">📈 Recently closed deals</h2><p class="text-muted-2 mb-0">Real agreed prices, shown publicly for full transparency.</p></div>
+        <a href="deals.html" class="btn btn-outline-success">Full history</a>
+      </div>
+      <div class="gp-card p-0 overflow-hidden"><div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light"><tr><th>Material</th><th>Final price</th><th>Quantity</th><th class="text-end">Deal value</th><th class="text-end">When</th></tr></thead>
+          <tbody id="recent-deals"></tbody>
+        </table>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- WHY US -->
+  <section class="container py-5">
+    <div class="text-center mb-5"><h2 class="section-title">Why trade on GarbageP2P</h2></div>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3"><div class="gp-card p-4 h-100 text-center"><div style="font-size:2.4rem">🏷️</div><h5 class="fw-bold mt-2">Top market prices</h5><p class="text-muted-2 small mb-0">Set your own asking price with no limit, and see the recent-deal average so you never undersell.</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="gp-card p-4 h-100 text-center"><div style="font-size:2.4rem">📍</div><h5 class="fw-bold mt-2">Live + pickup location</h5><p class="text-muted-2 small mb-0">Realtime GPS plus a separate pickup pin means transport is effortless and trust is built in.</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="gp-card p-4 h-100 text-center"><div style="font-size:2.4rem">⚖️</div><h5 class="fw-bold mt-2">Transparent deals</h5><p class="text-muted-2 small mb-0">Every closed deal price is public, keeping the whole market honest and fair.</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="gp-card p-4 h-100 text-center"><div style="font-size:2.4rem">🚚</div><h5 class="fw-bold mt-2">Doorstep pickup too</h5><p class="text-muted-2 small mb-0">Not into haggling? Book a classic scrap pickup right from your phone.</p></div></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="gp-hero py-5">
+    <div class="container text-center py-3">
+      <h2 class="fw-bold mb-2">Ready to trade your scrap the smart way?</h2>
+      <p class="lead mb-4">Set up a free demo profile as a collector, sweeper, sorter, dealer or recycler.</p>
+      <a href="profile.html" class="btn btn-warning btn-lg fw-semibold me-2">Create demo profile</a>
+      <a href="marketplace.html" class="btn btn-outline-light btn-lg fw-semibold">Explore marketplace</a>
+    </div>
+  </section>
+</main>
+
+<div id="gp-footer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/util.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/layout.js"></script>
 <script>
-  // Reveal on scroll
-  const obs = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('visible');
-        obs.unobserve(e.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+(async function () {
+  await Store.ready;
+  const cats = Store.categories(), avg = Store.averages(), st = Store.stats();
 
-  // Smooth nav active state
-  document.querySelectorAll('.nav-links a').forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const target = document.querySelector(link.getAttribute('href'));
-      if (target) target.scrollIntoView({ behavior: 'smooth' });
-    });
-  });
+  GP.qs('#hero-open').textContent = st.open;
+  GP.qs('#hero-stats').innerHTML =
+    `<div><strong class="fs-5">${st.deals}</strong><br>deals closed</div>
+     <div><strong class="fs-5">${GP.money(st.volume)}</strong><br>traded value</div>
+     <div><strong class="fs-5">${st.members}+</strong><br>collectors &amp; buyers</div>`;
 
-  // Back to top
-  document.querySelector('footer div:last-child').style.cursor = 'pointer';
-  document.querySelector('footer div:last-child').addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  GP.qs('#hero-rates').innerHTML = cats.slice(0, 6).map(c => {
+    const a = avg[c.id]; const rate = a && a.avg > 0 ? a.avg : (c.base_rate_min + c.base_rate_max) / 2;
+    return `<div class="col-6"><div class="d-flex justify-content-between align-items-center bg-soft-green rounded-3 px-3 py-2">
+      <span>${c.icon} ${GP.esc(c.name)}</span><span class="rate-badge">${GP.money(rate)}<span class="text-muted-2 small">/kg</span></span></div></div>`;
+  }).join('');
+
+  const steps = [
+    ['1', 'Post your request', 'Sellers list trash they\'ve collected; buyers post what they want. Add weight, asking price per kg/ton, photos and pickup point.'],
+    ['2', 'Share live location', 'Your realtime GPS location and a separate pickup location are shown on the map so the other party knows exactly where to come.'],
+    ['3', 'Negotiate', 'Both sides send price offers and counter-offers until you agree — there\'s no cap on the price you can ask.'],
+    ['4', 'Close & go public', 'The final agreed price is recorded in the public deal history, helping everyone see fair market rates.']
+  ];
+  GP.qs('#how-steps').innerHTML = steps.map(s =>
+    `<div class="col-md-6 col-lg-3"><div class="gp-card p-4 h-100"><div class="step-num mb-3">${s[0]}</div><h5 class="fw-bold">${s[1]}</h5><p class="text-muted-2 mb-0 small">${s[2]}</p></div></div>`).join('');
+
+  GP.qs('#cat-grid').innerHTML = cats.map(c => {
+    const a = avg[c.id]; const rate = a && a.avg > 0 ? a.avg : (c.base_rate_min + c.base_rate_max) / 2;
+    return `<div class="col-6 col-md-4 col-lg-3 col-xl-2"><a class="cat-tile text-decoration-none text-dark" href="marketplace.html?category=${c.id}">
+      <span class="emoji">${c.icon}</span><span class="fw-semibold">${GP.esc(c.name)}</span><span class="rate-badge small">${GP.money(rate)}/kg</span></a></div>`;
+  }).join('');
+
+  GP.qs('#latest-req').innerHTML = Store.requests({ openOnly: true }).slice(0, 6)
+    .map(r => `<div class="col-md-6 col-lg-4">${GP.requestCard(r)}</div>`).join('')
+    || '<p class="text-muted-2">No requests yet. <a href="post-request.html">Be the first to post →</a></p>';
+
+  GP.qs('#recent-deals').innerHTML = Store.deals().slice(0, 8).map(d =>
+    `<tr class="deal-row"><td>${d.category ? d.category.icon : '♻️'} <strong>${GP.esc(d.category ? d.category.name : 'Mixed')}</strong></td>
+     <td><span class="price-tag fs-6">${GP.money(d.final_price)}</span> <span class="unit-chip">/ ${d.price_unit}</span></td>
+     <td>${GP.tidy(d.weight)} ${d.weight_unit}</td>
+     <td class="text-end fw-semibold">${GP.money(d.total_amount)}</td>
+     <td class="text-end text-muted-2 small">${GP.timeAgo(d.created_at)}</td></tr>`).join('');
+})();
 </script>
-
 </body>
 </html>

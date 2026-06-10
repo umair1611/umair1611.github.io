@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post a Request — GarbageP2P</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="assets/img/favicon.svg">
+</head>
+<body data-page="post-request">
+<noscript><div class="noscript-warn">This demo needs JavaScript enabled.</div></noscript>
+<div id="gp-header"></div>
+
+<main class="gp-main">
+  <div class="container py-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-9">
+        <h1 class="section-title mb-1">Post a request</h1>
+        <p class="text-muted-2">Tell the marketplace what you want to sell or buy. Add your live location and a pickup point. <span id="who"></span></p>
+
+        <form id="req-form" class="gp-card p-4 p-md-5">
+          <div class="mb-4">
+            <label class="form-label fw-semibold">I want to</label>
+            <div class="btn-group w-100" role="group">
+              <input type="radio" class="btn-check" name="type" id="t_sell" value="sell" checked>
+              <label class="btn btn-outline-success" for="t_sell">♻️ Sell trash / scrap</label>
+              <input type="radio" class="btn-check" name="type" id="t_buy" value="buy">
+              <label class="btn btn-outline-success" for="t_buy">🏭 Buy scrap</label>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-8"><label class="form-label required">Title</label>
+              <input id="title" class="form-control" placeholder="e.g. 50 kg mixed PET bottles" required></div>
+            <div class="col-md-4"><label class="form-label">Material</label>
+              <select id="category" class="form-select"><option value="">Mixed / other</option></select></div>
+            <div class="col-12"><label class="form-label">Description</label>
+              <textarea id="description" rows="3" class="form-control" placeholder="Condition, how it's packed, pickup notes…"></textarea></div>
+            <div class="col-md-6"><label class="form-label">Estimated quantity</label>
+              <div class="input-group"><input type="number" step="0.01" min="0" id="weight" class="form-control" placeholder="e.g. 50">
+                <select id="weight_unit" class="form-select" style="max-width:90px"><option value="kg">kg</option><option value="ton">ton</option></select></div></div>
+            <div class="col-md-6"><label class="form-label">Your proposed price <span class="text-muted-2">(no limit)</span></label>
+              <div class="input-group"><span class="input-group-text">PKR</span>
+                <input type="number" step="0.01" min="0" id="price" class="form-control" placeholder="per unit">
+                <span class="input-group-text">per</span>
+                <select id="price_unit" class="form-select" style="max-width:90px"><option value="kg">kg</option><option value="ton">ton</option></select></div>
+              <div class="form-text">Leave blank for "open price". Negotiate the final figure in chat.</div></div>
+            <div class="col-md-6"><label class="form-label">Photo (optional)</label>
+              <input type="file" id="image" accept="image/*" class="form-control">
+              <div class="form-text">Stored in your browser only; auto-shrunk to keep it small.</div></div>
+            <div class="col-md-6"><label class="form-label">City</label><input id="city" class="form-control" value="Karachi"></div>
+          </div>
+
+          <hr class="my-4">
+          <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill text-danger"></i> Locations</h5>
+          <div class="row g-4">
+            <div class="col-md-6">
+              <label class="form-label"><span class="legend-dot dot-live"></span> Your live (realtime) location</label>
+              <button type="button" id="getloc" class="btn btn-outline-success w-100 mb-2">📡 Capture my current location</button>
+              <div id="geo_status" class="small text-muted-2">Tap above and allow location access. Shows buyers where you are right now.</div>
+              <input type="hidden" id="current_lat"><input type="hidden" id="current_lng">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label"><span class="legend-dot dot-pickup"></span> Pickup location</label>
+              <input id="pickup_address" class="form-control mb-2" placeholder="Pickup address (or click the map)">
+              <button type="button" id="pick_current" class="btn btn-sm btn-outline-success mb-2">📍 Same as my current location</button>
+              <div id="pickup-map" class="gp-map map-sm"></div>
+              <input type="hidden" id="pickup_lat"><input type="hidden" id="pickup_lng">
+            </div>
+          </div>
+          <div class="mt-4"><button class="btn btn-success btn-lg w-100 fw-semibold">Publish request</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="gp-footer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="assets/js/util.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/maps.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+(async function () {
+  await Store.ready;
+  const prof = Store.profile();
+  GP.qs('#who').innerHTML = prof ? 'Posting as <strong>' + GP.esc(prof.name) + '</strong>.' : 'Posting as <strong>Guest</strong> — <a href="profile.html">set up a demo profile</a> to use your name.';
+
+  // prefill type/category from query
+  const p = new URLSearchParams(location.search);
+  if (p.get('type') === 'buy') GP.qs('#t_buy').checked = true;
+  GP.qs('#category').innerHTML += Store.categories().map(c => `<option value="${c.id}">${c.icon} ${GP.esc(c.name)}</option>`).join('');
+  if (p.get('category')) GP.qs('#category').value = p.get('category');
+
+  // live location button
+  GP.qs('#getloc').addEventListener('click', async () => {
+    const st = GP.qs('#geo_status'); st.textContent = '📡 Locating…';
+    try {
+      const pos = await GP.getPosition();
+      GP.qs('#current_lat').value = pos.lat; GP.qs('#current_lng').value = pos.lng;
+      st.innerHTML = '<span class="text-success">✓ Live location captured</span> (' + pos.lat + ', ' + pos.lng + ')';
+      picker.map.setView([pos.lat, pos.lng], 15);
+    } catch (e) { st.innerHTML = '<span class="text-danger">Could not get location: ' + (e.message || e.code) + '</span>'; }
+  });
+
+  // pickup picker
+  const picker = gpLocationPicker({ mapId: 'pickup-map', latInput: '#pickup_lat', lngInput: '#pickup_lng', addressInput: '#pickup_address', useCurrentBtn: '#pick_current' });
+
+  // optional image -> downscaled dataURL
+  let imageData = null;
+  GP.qs('#image').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) { imageData = null; return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const im = new Image();
+      im.onload = () => {
+        const max = 800, scale = Math.min(1, max / Math.max(im.width, im.height));
+        const cv = document.createElement('canvas');
+        cv.width = im.width * scale; cv.height = im.height * scale;
+        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+        imageData = cv.toDataURL('image/jpeg', 0.7);
+      };
+      im.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  GP.qs('#req-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const title = GP.qs('#title').value.trim();
+    if (title.length < 5) { GP.toast('Give your request a clear title (5+ characters).', 'error'); return; }
+    const val = id => { const v = GP.qs('#' + id).value; return v === '' ? null : v; };
+    const r = Store.addRequest({
+      type: document.querySelector('input[name=type]:checked').value,
+      category_id: val('category') ? Number(val('category')) : null,
+      title, description: GP.qs('#description').value.trim(),
+      weight: val('weight') ? Number(val('weight')) : null, weight_unit: GP.qs('#weight_unit').value,
+      proposed_price: val('price') ? Number(val('price')) : null, price_unit: GP.qs('#price_unit').value,
+      current_lat: val('current_lat') ? Number(val('current_lat')) : null, current_lng: val('current_lng') ? Number(val('current_lng')) : null,
+      pickup_lat: val('pickup_lat') ? Number(val('pickup_lat')) : null, pickup_lng: val('pickup_lng') ? Number(val('pickup_lng')) : null,
+      pickup_address: GP.qs('#pickup_address').value.trim(), city: GP.qs('#city').value.trim() || 'Karachi',
+      image: imageData
+    });
+    GP.toast('Your request is live!', 'success');
+    setTimeout(() => location.href = 'request.html?id=' + encodeURIComponent(r.id), 700);
+  });
+})();
+</script>
+</body>
+</html>

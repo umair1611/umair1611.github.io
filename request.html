@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request — GarbageP2P</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="assets/img/favicon.svg">
+</head>
+<body data-page="marketplace">
+<noscript><div class="noscript-warn">This demo needs JavaScript enabled.</div></noscript>
+<div id="gp-header"></div>
+
+<main class="gp-main">
+  <div class="container py-4" id="page"><p class="text-muted-2">Loading…</p></div>
+</main>
+
+<div id="gp-footer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="assets/js/util.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/maps.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+(async function () {
+  await Store.ready;
+  const id = GP.param('id');
+  const r = Store.requestById(id);
+  const root = GP.qs('#page');
+  if (!r) { root.innerHTML = '<div class="text-center py-5"><h2>Request not found</h2><a class="btn btn-success mt-3" href="marketplace.html">Back to marketplace</a></div>'; return; }
+
+  const isSell = r.type === 'sell';
+  const cat = r.category || { name: 'Mixed scrap', icon: '♻️' };
+  const avgMap = Store.averages();
+  const a = r.category_id ? avgMap[r.category_id] : null;
+  const closed = (r.status === 'closed');
+  const dist = GP.haversineKm(r.current_lat, r.current_lng, r.pickup_lat, r.pickup_lng);
+  const img = r.image || 'assets/img/placeholder.svg';
+
+  root.innerHTML = `
+    <nav class="small mb-3"><a href="marketplace.html" class="link-green">← Back to marketplace</a></nav>
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="gp-card overflow-hidden mb-4">
+          <img src="${GP.esc(img)}" class="w-100" style="max-height:360px;object-fit:cover" onerror="this.src='assets/img/placeholder.svg'">
+          <div class="p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+              <span class="badge badge-type ${isSell ? 'badge-sell' : 'badge-buy'} rounded-pill px-3 py-2 fs-6">${isSell ? '♻️ SELLING TRASH' : '🏭 WANTS TO BUY'}</span>
+              <span class="text-muted-2">${cat.icon} ${GP.esc(cat.name)} · ${GP.timeAgo(r.created_at)}</span>
+            </div>
+            <h1 class="h3 fw-bold">${GP.esc(r.title)}</h1>
+            <p class="text-secondary" style="white-space:pre-line">${GP.esc(r.description || '')}</p>
+            <div class="row g-3 mt-1">
+              <div class="col-sm-4"><div class="bg-soft-green rounded-3 p-3"><div class="small text-muted-2">${isSell ? 'Asking price' : 'Offered price'}</div>
+                <div class="price-tag">${r.proposed_price != null ? GP.money(r.proposed_price) : 'Open'}<span class="small fw-normal text-muted-2">/${r.price_unit}</span></div></div></div>
+              <div class="col-sm-4"><div class="bg-soft-green rounded-3 p-3"><div class="small text-muted-2">Quantity</div>
+                <div class="fw-bold fs-5">${r.weight != null ? GP.tidy(r.weight) + ' ' + r.weight_unit : 'Negotiable'}</div></div></div>
+              <div class="col-sm-4"><div class="bg-soft-green rounded-3 p-3"><div class="small text-muted-2">Market avg (recent)</div>
+                <div class="fw-bold fs-5">${a && a.avg > 0 ? GP.money(a.avg) + '<span class="small text-muted-2">/kg</span>' : '—'}</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gp-card p-4 mb-4">
+          <h5 class="fw-bold mb-1"><i class="bi bi-geo-alt-fill text-danger"></i> Location</h5>
+          <p class="small text-muted-2 mb-2"><span class="legend-dot dot-live"></span> Live location (realtime when posted)
+            &nbsp;&nbsp;<span class="legend-dot dot-pickup"></span> Pickup point ${dist != null ? '· <strong>' + dist.toFixed(1) + ' km</strong> apart' : ''}</p>
+          <div id="req-map" class="gp-map map-md"></div>
+          ${r.pickup_address ? '<p class="mt-3 mb-0"><strong>Pickup address:</strong> ' + GP.esc(r.pickup_address) + '</p>' : ''}
+        </div>
+
+        <!-- NEGOTIATION -->
+        <div class="gp-card p-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="fw-bold mb-0">💬 Negotiate</h5>
+            <span class="badge bg-soft-green text-success">Simulated counterpart</span>
+          </div>
+          <p class="small text-muted-2">Send messages and price offers. ${GP.esc(r.owner.name)} (the ${isSell ? 'seller' : 'buyer'}) is simulated locally for this demo and will counter until you agree.</p>
+          <div class="chat-wrap">
+            <div id="chat-body" class="chat-body"></div>
+            ${closed ? '<div class="p-3 border-top bg-light text-center text-muted-2">🤝 This request is closed — a deal was made. Chat is read-only.</div>' : `
+            <div class="p-2 border-top">
+              <form id="chat-form" class="d-flex gap-2 mb-2">
+                <input id="chat-input" class="form-control" placeholder="Type a message…" autocomplete="off">
+                <button class="btn btn-success"><i class="bi bi-send"></i></button>
+              </form>
+              <form id="offer-form" class="input-group input-group-sm">
+                <span class="input-group-text">💰 Offer PKR</span>
+                <input id="offer-price" type="number" step="0.01" min="0" class="form-control" placeholder="price">
+                <span class="input-group-text">per</span>
+                <select id="offer-unit" class="form-select" style="max-width:80px"><option value="kg">kg</option><option value="ton">ton</option></select>
+                <button class="btn btn-warning">Send offer</button>
+              </form>
+            </div>`}
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDEBAR -->
+      <div class="col-lg-4">
+        <div class="gp-card p-4 mb-4">
+          <h6 class="fw-bold text-muted-2 mb-3">Posted by</h6>
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="rounded-circle bg-soft-green d-flex align-items-center justify-content-center" style="width:54px;height:54px;font-size:1.5rem">${isSell ? '🧹' : '🏭'}</div>
+            <div><div class="fw-bold">${GP.esc(r.owner.name)}</div>
+              <div class="small text-muted-2">${GP.esc(r.owner.category || 'Member')}</div>
+              ${r.owner.rating ? '<div class="small text-warning">★ ' + r.owner.rating + '</div>' : ''}</div>
+          </div>
+          <p class="small text-muted-2 mb-0">Use the chat to agree a price, then finalise the deal below.</p>
+        </div>
+
+        <div class="gp-card p-4 mb-4" id="close-card">
+          ${closed ? `<div class="text-center"><div style="font-size:2.4rem">🤝</div><h5 class="fw-bold">Deal closed</h5><a href="deals.html" class="btn btn-sm btn-outline-success mt-2">View in public history</a></div>` : `
+          <h6 class="fw-bold mb-2">✅ Finalise the deal</h6>
+          <p class="small text-muted-2">Enter the agreed figures. The price becomes public in the deal history.</p>
+          <form id="close-form">
+            <label class="form-label small required">Final price (per unit)</label>
+            <div class="input-group mb-2"><span class="input-group-text">PKR</span>
+              <input type="number" step="0.01" min="0" id="c-price" class="form-control" value="${r.proposed_price != null ? r.proposed_price : ''}" required>
+              <select id="c-price-unit" class="form-select" style="max-width:80px"><option value="kg"${r.price_unit === 'kg' ? ' selected' : ''}>kg</option><option value="ton"${r.price_unit === 'ton' ? ' selected' : ''}>ton</option></select>
+            </div>
+            <label class="form-label small required">Final quantity</label>
+            <div class="input-group mb-3">
+              <input type="number" step="0.01" min="0" id="c-weight" class="form-control" value="${r.weight != null ? r.weight : ''}" required>
+              <select id="c-weight-unit" class="form-select" style="max-width:80px"><option value="kg"${r.weight_unit === 'kg' ? ' selected' : ''}>kg</option><option value="ton"${r.weight_unit === 'ton' ? ' selected' : ''}>ton</option></select>
+            </div>
+            <button class="btn btn-success w-100 fw-semibold">🤝 Close the deal</button>
+          </form>`}
+        </div>
+
+        <div class="gp-card p-4">
+          <h6 class="fw-bold mb-2">💡 Price guidance</h6>
+          ${a && a.avg > 0
+            ? `<ul class="small mb-0 ps-3"><li>Recent average: <strong>${GP.money(a.avg)}/kg</strong></li><li>Range seen: ${GP.money(a.min)} – ${GP.money(a.max)}/kg</li><li>Based on ${a.count} deals (90 days)</li></ul>`
+            : '<p class="small text-muted-2 mb-0">No recent deals in this category yet — you\'ll set the benchmark!</p>'}
+          <a href="deals.html" class="btn btn-sm btn-outline-success w-100 mt-3">See deal history</a>
+        </div>
+      </div>
+    </div>`;
+
+  // ---- map ----
+  const points = [];
+  if (r.current_lat && r.current_lng) points.push({ lat: +r.current_lat, lng: +r.current_lng, type: 'live', label: '📡 <strong>Live location</strong><br>where the user was when posting' });
+  if (r.pickup_lat && r.pickup_lng) points.push({ lat: +r.pickup_lat, lng: +r.pickup_lng, type: 'pickup', label: '📦 <strong>Pickup point</strong><br>' + GP.esc(r.pickup_address || '') });
+  if (points.length) gpRenderMap('req-map', points, { scroll: false, zoom: 14 });
+
+  if (closed) { renderMessages(); return; }
+
+  // ---- negotiation ----
+  const me = (Store.profile() && Store.profile().name) || 'You';
+  const themName = r.owner.name;
+  const listed = r.proposed_price != null ? Number(r.proposed_price) : (a && a.avg > 0 ? Math.round(a.avg) : 100);
+  const body = GP.qs('#chat-body');
+
+  function renderMessages() {
+    const msgs = Store.messages(r.id);
+    if (!msgs.length) {
+      GP.qs('#chat-body').innerHTML = '<div class="msg system">No messages yet. Say salam or send a price offer to start negotiating 👋</div>';
+      return;
+    }
+    GP.qs('#chat-body').innerHTML = msgs.map(m => {
+      if (m.type === 'system') return `<div class="msg system">${GP.esc(m.body)}</div>`;
+      const side = m.from === 'me' ? 'me' : 'them';
+      if (m.type === 'offer')
+        return `<div class="msg offer ${side}"><div class="small fw-semibold mb-1">💰 ${GP.esc(m.name)} offered</div>
+          <div class="offer-price">PKR ${GP.num(m.price)} <span class="small fw-normal">/ ${m.unit}</span></div>
+          ${m.body ? '<div class="mt-1">' + GP.esc(m.body) + '</div>' : ''}<div class="meta">${GP.timeAgo(m.ts)}</div></div>`;
+      return `<div class="msg ${side}">${side === 'them' ? '<div class="small fw-semibold mb-1">' + GP.esc(m.name) + '</div>' : ''}${GP.esc(m.body)}<div class="meta">${GP.timeAgo(m.ts)}</div></div>`;
+    }).join('');
+    const b = GP.qs('#chat-body'); b.scrollTop = b.scrollHeight;
+  }
+
+  function push(msg) { Store.addMessage(r.id, msg); renderMessages(); }
+  function typing(on) {
+    let t = GP.qs('#typing');
+    if (on && !t) { body.insertAdjacentHTML('beforeend', '<div class="typing" id="typing">' + GP.esc(themName) + ' is typing <span>•</span><span>•</span><span>•</span></div>'); body.scrollTop = body.scrollHeight; }
+    if (!on && t) t.remove();
+  }
+  function lastBotOffer() {
+    const m = Store.messages(r.id).filter(x => x.from === 'them' && x.type === 'offer');
+    return m.length ? Number(m[m.length - 1].price) : listed;
+  }
+  function evaluate(P) {
+    const prev = lastBotOffer();
+    if (isSell) { // owner = seller wants high; you (buyer) offer P
+      const res = Math.round(listed * 0.9);
+      if (P >= res) return { accept: true, price: P };
+      return { accept: false, price: Math.max(res, Math.round((P + prev) / 2)) };
+    } else { // owner = buyer wants low; you (seller) offer P
+      const res = Math.round(listed * 1.1);
+      if (P <= res) return { accept: true, price: P };
+      return { accept: false, price: Math.min(res, Math.round((P + prev) / 2)) };
+    }
+  }
+  function agree(price) {
+    push({ from: 'them', name: themName, type: 'system', body: '✅ ' + themName + ' agreed at PKR ' + GP.num(price) + '/' + (isSell ? r.price_unit : r.price_unit) + '. Finalise the deal on the right.' });
+    GP.qs('#c-price').value = price;
+    GP.qs('#close-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    GP.toast('Counterpart agreed at PKR ' + GP.num(price) + ' — finalise the deal →', 'success');
+  }
+
+  renderMessages();
+
+  GP.qs('#chat-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = GP.qs('#chat-input').value.trim(); if (!v) return;
+    GP.qs('#chat-input').value = '';
+    push({ from: 'me', name: me, type: 'text', body: v });
+    typing(true);
+    setTimeout(() => {
+      typing(false);
+      const lines = isSell ? ['Stock is ready. What\'s your best price?', 'I can arrange pickup once we agree.', 'Send me an offer per ' + r.price_unit + '.']
+                           : ['How much quantity do you have?', 'Share your rate and we\'ll proceed.', 'Send an offer per ' + r.price_unit + '.'];
+      push({ from: 'them', name: themName, type: 'text', body: lines[Math.floor(Math.random() * lines.length)] });
+    }, 900);
+  });
+
+  GP.qs('#offer-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const P = parseFloat(GP.qs('#offer-price').value), unit = GP.qs('#offer-unit').value;
+    if (!(P > 0)) { GP.toast('Enter a price greater than 0', 'error'); return; }
+    GP.qs('#offer-price').value = '';
+    push({ from: 'me', name: me, type: 'offer', price: P, unit });
+    typing(true);
+    setTimeout(() => {
+      typing(false);
+      const res = evaluate(P);
+      if (res.accept) { push({ from: 'them', name: themName, type: 'text', body: 'Deal! PKR ' + GP.num(P) + '/' + unit + ' works for me. 🤝' }); agree(P); }
+      else { push({ from: 'them', name: themName, type: 'offer', price: res.price, unit, body: isSell ? 'I can\'t go that low. How about this?' : 'That\'s too high for me. Meet me here?' }); }
+    }, 1100);
+  });
+
+  GP.qs('#close-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const price = parseFloat(GP.qs('#c-price').value), pUnit = GP.qs('#c-price-unit').value;
+    const weight = parseFloat(GP.qs('#c-weight').value), wUnit = GP.qs('#c-weight-unit').value;
+    if (!(price > 0) || !(weight > 0)) { GP.toast('Enter a final price and quantity.', 'error'); return; }
+    if (!confirm('Close this deal at PKR ' + GP.num(price) + '/' + pUnit + '? It will be public in the deal history.')) return;
+    const seller = isSell ? { id: r.user_id, name: r.owner.name } : { name: me };
+    const buyer  = isSell ? { name: me } : { id: r.user_id, name: r.owner.name };
+    Store.closeRequest(r.id, {
+      request_id: r.id, category_id: r.category_id,
+      seller_id: seller.id || null, buyer_id: buyer.id || null, seller, buyer,
+      final_price: price, price_unit: pUnit, weight, weight_unit: wUnit,
+      address: r.pickup_address || (r.city || 'Karachi')
+    });
+    GP.toast('Deal closed and published to the public history! 🎉', 'success');
+    setTimeout(() => location.href = 'deals.html', 900);
+  });
+})();
+</script>
+</body>
+</html>

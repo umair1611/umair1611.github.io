@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Activity — GarbageP2P</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="assets/img/favicon.svg">
+</head>
+<body data-page="dashboard">
+<noscript><div class="noscript-warn">This demo needs JavaScript enabled.</div></noscript>
+<div id="gp-header"></div>
+
+<main class="gp-main">
+  <div class="container py-4" id="page"><p class="text-muted-2">Loading…</p></div>
+</main>
+
+<div id="gp-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/util.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+(async function () {
+  await Store.ready;
+  const act = Store.myActivity();
+  const prof = act.profile;
+  const root = GP.qs('#page');
+
+  const head = `<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <div><h1 class="section-title mb-0">${prof ? 'Hi, ' + GP.esc(prof.name.split(' ')[0]) + ' 👋' : 'My activity'}</h1>
+      <p class="text-muted-2 mb-0">${prof ? GP.esc(prof.category || 'Member') + ' · ' + GP.esc(prof.city || 'Karachi') : 'Browser-local demo activity'}</p></div>
+    <div><a href="post-request.html" class="btn btn-success"><i class="bi bi-plus-lg"></i> Post a request</a>
+      <a href="profile.html" class="btn btn-outline-success">${prof ? 'Edit profile' : 'Set up profile'}</a></div></div>`;
+
+  const stats = `<div class="row g-3 mb-4">
+    <div class="col-4"><div class="gp-stat"><div class="n">${act.requests.length}</div><div class="text-muted-2">Requests posted</div></div></div>
+    <div class="col-4"><div class="gp-stat"><div class="n">${act.deals.length}</div><div class="text-muted-2">Deals closed</div></div></div>
+    <div class="col-4"><div class="gp-stat"><div class="n">${act.bookings.length}</div><div class="text-muted-2">Pickups booked</div></div></div></div>`;
+
+  function reqList() {
+    if (!act.requests.length) return '<div class="gp-card p-4 text-center text-muted-2">No requests yet. <a href="post-request.html">Post your first →</a></div>';
+    return '<div class="gp-card p-0 overflow-hidden"><div class="list-group list-group-flush">' + act.requests.map(r =>
+      `<a href="request.html?id=${encodeURIComponent(r.id)}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+        <div><span class="badge ${r.type === 'sell' ? 'badge-sell' : 'badge-buy'} me-1">${r.type === 'sell' ? 'SELL' : 'BUY'}</span> <strong>${GP.esc(r.title)}</strong>
+          <div class="small text-muted-2">${(r.category ? r.category.icon + ' ' + r.category.name : 'Mixed')} · ${GP.timeAgo(r.created_at)}</div></div>
+        <span class="badge bg-${r.status === 'open' ? 'success' : (r.status === 'closed' ? 'secondary' : 'warning')}">${r.status}</span></a>`).join('') + '</div></div>';
+  }
+  function dealList() {
+    if (!act.deals.length) return '<div class="gp-card p-4 text-center text-muted-2">No closed deals yet — negotiate one in the <a href="marketplace.html">marketplace</a>.</div>';
+    return '<div class="gp-card p-0 overflow-hidden"><div class="table-responsive"><table class="table mb-0"><thead class="table-light"><tr><th>Material</th><th>Price</th><th>Qty</th><th class="text-end">Value</th><th class="text-end">When</th></tr></thead><tbody>' +
+      act.deals.map(d => `<tr><td>${d.category ? d.category.icon + ' ' + GP.esc(d.category.name) : 'Mixed'}</td><td>${GP.money(d.final_price)}/${d.price_unit}</td><td>${GP.tidy(d.weight)} ${d.weight_unit}</td><td class="text-end fw-semibold">${GP.money(d.total_amount)}</td><td class="text-end small text-muted-2">${GP.timeAgo(d.created_at)}</td></tr>`).join('') + '</tbody></table></div></div>';
+  }
+  function bookList() {
+    if (!act.bookings.length) return '<div class="gp-card p-4 text-center text-muted-2">No pickups booked. <a href="book-pickup.html">Book one →</a></div>';
+    return '<div class="gp-card p-0 overflow-hidden"><div class="list-group list-group-flush">' + act.bookings.map(b =>
+      `<div class="list-group-item"><div class="d-flex justify-content-between"><strong>${GP.esc(b.category_name || 'Mixed')} pickup</strong><span class="badge bg-warning">${b.status}</span></div>
+        <div class="small text-muted-2">${GP.esc(b.address)} · ${b.preferred_date || ''} ${b.time_slot || ''}</div></div>`).join('') + '</div></div>';
+  }
+
+  root.innerHTML = head + stats + `
+    <div class="row g-4">
+      <div class="col-lg-7"><h5 class="fw-bold mb-2">My requests</h5>${reqList()}
+        <h5 class="fw-bold mb-2 mt-4">My closed deals</h5>${dealList()}</div>
+      <div class="col-lg-5"><h5 class="fw-bold mb-2">My pickup bookings</h5>${bookList()}
+        <div class="gp-card p-4 bg-soft-green mt-4"><h6 class="fw-bold">Quick actions</h6><div class="d-grid gap-2">
+          <a href="post-request.html?type=sell" class="btn btn-success btn-sm">♻️ Sell trash</a>
+          <a href="post-request.html?type=buy" class="btn btn-outline-success btn-sm">🏭 Post a buy request</a>
+          <a href="marketplace.html" class="btn btn-outline-success btn-sm">🤝 Browse marketplace</a>
+          <a href="#" data-reset class="btn btn-outline-danger btn-sm">🗑️ Reset demo data</a>
+        </div></div>
+      </div>
+    </div>`;
+})();
+</script>
+</body>
+</html>
