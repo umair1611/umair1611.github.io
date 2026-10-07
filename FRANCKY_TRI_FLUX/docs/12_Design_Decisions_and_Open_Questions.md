@@ -1,0 +1,37 @@
+# 12 - Design Decisions and Points to Confirm with the Client
+
+The specification asks the developer to **report any ambiguity before changing logic** (Addendum status, F.10).
+Each point below was implemented with a configurable default; nothing is hidden. Send this list to the client
+for confirmation (a short "OK" per point is enough).
+
+| # | Topic | Spec reference | What the spec says | What FRANCKY does (default) | Configurable via |
+|---|---|---|---|---|---|
+| D1 | 10 % drawdown reference | 10, G.4, H | "capital hit by 10 %" | DD measured from the **peak equity** (high-water mark). After each pause the reference is re-based to the current equity, so the next pause needs a further 10 % fall (otherwise the robot would pause every 10 s while equity stays below the threshold). | *Drawdown reference* (peak / start balance / day start), *Drawdown threshold*, *Pause length* |
+| D2 | Pause behaviour | G.4 + client message 07/10 | stop, re-activate safeties, verify, restart a few seconds later; never wait indefinitely | Strict 10 s timer; new entries blocked; open positions managed; safety self-checks logged (`SAFETY_CHECK`) and never extend the pause. Live: pause also ends by wall clock if no tick arrives. | *Pause length (s)* |
+| D3 | Meaning of the mode delay (1500 / 750 / 300 ms) | Table 15 "cooldown/delay" | "cooldown/délai initial" | Default = **cooldown** between two entries of the same engine. Option *Confirm* = the signal must stay valid during the delay before sending; *Both* = both. | *How the mode delay is applied* |
+| D4 | Mode spread limits | Table 13 "threshold per symbol/mode" | per symbol/mode | Three limits (SPEED/AGGRESSIVE/ULTRA) in points in the per-symbol presets; 0 = automatic limit relative to ATR. | *Max spread SPEED/AGGRESSIVE/ULTRA*, *Auto max spread* |
+| D5 | BTCUSD starting values | G.1 | own values, not copied from GBPUSD | Momentum time-stop starts at 30 s (like XAUUSD, a volatile market) and spread limits on *auto*; **must be optimized**. Weekend trading enabled in the BTCUSD preset (session filter OFF, Saturday/Sunday ON). | BTCUSD preset |
+| D6 | Velocity metric | Table 9 "velocity 2 s >= 1.25x median 30 s" | tick speed | Number of ticks per 2 s window vs the median of the 15 previous 2 s windows. Option: price path (sum of price moves). | *Velocity metric* |
+| D7 | "Compatible directional momentum" (Momentum BUY/SELL) | Table 9 | compatible momentum | ROC(5) sign must agree (ON); EMA9/21, ADX/DI and M5 EMA20/50 STRICT available as optional internal confirmations (OFF / SOFT). | *Confirm with ROC*, *Confirm with M1 EMA*, *Confirm with M1 ADX/DI*, *M5 EMA20/50 context* |
+| D8 | Momentum internal score for the momentum-loss exit | Table 14 "score < 60" | score not defined | Weighted 0-100 score of tick imbalance (40 %), velocity (25 %), acceleration (15 %), ROC agreement (20 %); used only for the Momentum exit, never as a global score. | *Exit when momentum score below*, *Tick inversion persistence* |
+| D9 | Time-stops | Table 14 | EURUSD 45 s, XAUUSD 30 s; hard max 120 s | Per engine: Momentum 45/30/30 s (EUR/XAU/BTC presets), FVG 120 s, Range 120 s; hard max 120 s for all. A time-stop closes the trade whatever its result. FVG (M5) will probably need longer values - to be decided by tests. | *Time-stop* per engine, *Hard max holding time* |
+| D10 | Range STRICT "strong H1 trend" | A.4 | "strong directional trend clearly established" | Range is blocked only if H1 is BULLISH/BEARISH **and** ADX >= 25 (separate threshold). Setting it to 18 gives exactly the A.1 definition. | *H1 'strong trend' ADX* |
+| D11 | SL/TP ratio guard | Table 14 | SL/TP <= 2, never manipulated | Signals with SL/TP > 2 are **refused** (reason SLTP_RATIO); TP is never shrunk to fit. | *SL/TP ratio guard* |
+| D12 | Broker stops level | Table 5, B.5 | respect stops/freeze levels | Default: widen SL/TP to the broker minimum and re-compute the lot with the real distance (option: reject). | *Broker stops-level policy* |
+| D13 | Consecutive losses scope | B.4 | engine / symbol / instance | One instance = one symbol (G.3), so "symbol" = "instance". Options: per engine (default) or whole instance. Setups seen during the cooldown are "burned" so only a NEW setup can trade afterwards. | *Scope*, X, Y |
+| D14 | Aggregate exposure | B.6 | USD exposure, no hard-coded correlation | Default: net risk per currency (EUR, USD, XAU, BTC legs from broker symbol data) + total risk cap. Option: correlation-adjusted risk using measured M5 correlations. Positions without SL count as a 1 % adverse move. | *Aggregate exposure mode* and limits |
+| D15 | Same-direction signals | Table 12 | ignore or stack | Default stack (needed for 3 per engine), with a minimum distance between entries of the same engine and one trade per setup (FVG zone / range touch / breakout level). | *Same-direction signals*, *Min distance between same-engine entries* |
+| D16 | Opposite signals | Table 12 | block a few hundred ms and re-evaluate | BUY+SELL from different engines within 300 ms -> both refused, entries blocked 300 ms, fresh evaluation afterwards. Hedging OFF additionally blocks a new trade opposite to an open position of this instance. | *Opposite-signal conflict window*, *Entry block after a conflict*, *OPPOSITE_HEDGE* |
+| D17 | News sources | B.1 | MT5 native calendar; MT4 faithful equivalent; no paid dependency | MT5 live: built-in calendar. Tester (MT5/MT4) and MT4 live: CSV file in the Common folder (exported by the provided MT5 script) or the free ForexFactory weekly XML (live, URL must be allowed). Keywords (NFP, CPI, FOMC, rate decision...) block whatever their impact. Feed times treated as UTC. | *News source*, *Min impact*, *Keywords*, minutes before/after |
+| D18 | Supported symbols | 3 markets V1 | EURUSD, XAUUSD, BTCUSD | Other symbols give a WARNING (not a block) so the client keeps freedom of use; BLOCK mode available. Broker names like EURUSD.m, GOLD, XBTUSD are recognised. | *Supported-symbol check* |
+| D19 | Netting accounts | G.2 | up to 9 positions per symbol | Netting accounts physically allow one position per symbol: FRANCKY then limits itself to 1 position and logs NETTING_ACCOUNT. Use hedging accounts. | - |
+| D20 | 90 % win-rate target | 11, C.4 | research target, no cosmetic tricks | The optimizer criterion favours expectancy, PF and low DD; reports show win rate together with PF, expectancy, DD, OOS and stress results. | *Custom optimization criterion* |
+| D21 | Latency <= 10 ms | Table 13, D.3 | measured, not promised | Order round-trip and decision time measured on every trade (journal + panel); optional block when the average latency exceeds a limit. | *Max avg order latency* |
+| D22 | Licence | 1.1 | perpetual, no lock | No licence code, no account/PC/broker check, no expiry, no DLL, no web activation. The only web call is the optional news feed. | - |
+
+## Delivery note for the developer (not for the client)
+* EX5 / EX4 binaries must be produced by compiling the delivered sources in MetaEditor 5 / MetaEditor 4
+  (`F7`). The build environment used to write the code had no MetaTrader compiler; the code was written to
+  compile cleanly and checked by `tools/check_core.py` (identity MT5/MT4 Core, forbidden APIs, include
+  targets, bracket balance) and by multiple review passes, but the first real compilation must be done in
+  MetaEditor before delivery. Fix any compiler message, then re-run `tools/check_core.py --sync`.
