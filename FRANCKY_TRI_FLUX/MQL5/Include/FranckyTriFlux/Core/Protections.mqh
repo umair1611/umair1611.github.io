@@ -253,7 +253,7 @@ public:
       m_pauseStartMsc=0; m_pauseEndMsc=0; m_wallEndUs=0;
       m_triggers=0; m_verifyReq=false; m_rebasePending=false;
       datetime srv=(datetime)(NowMs()/1000);
-      m_dayStart=(srv>0 ? FTF_DayStart(srv) : 0);
+      m_dayStart=(srv>0 ? FTF_DayStart(srv) : (datetime)0);
       LogInfo("drawdown guard "+(m_ctx.cfg.DdEnabled ? "ON" : "OFF")+": threshold "+FTF_ProtPct(m_ctx.cfg.DdPausePct)+
               "%, pause "+IntegerToString(m_ctx.cfg.DdPauseSec)+" s (strict timer"+(m_isTester ? ", tester: server time" : ", server time + wall clock")+
               "), reference "+RefName()+" | equity "+FTF_D(eq,2)+" balance "+FTF_D(bal,2));
@@ -332,7 +332,7 @@ public:
          if(wallRem<rem)
             rem=wallRem;
         }
-      return (rem>0 ? rem : 0);
+      return (rem>0 ? rem : (long)0);
      }
 
    double            DdPct(void)        { return m_ddPct; }
@@ -367,7 +367,7 @@ public:
       m_ctx.state.SetLong("dd.state",(long)m_state);
       m_ctx.state.SetDouble("dd.ref",m_startRef);
       m_ctx.state.SetDouble("dd.peak",m_peak);
-      m_ctx.state.SetLong("dd.pauseEnd",(m_state==FTF_DDS_PAUSED ? m_pauseEndMsc : 0));
+      m_ctx.state.SetLong("dd.pauseEnd",(m_state==FTF_DDS_PAUSED ? m_pauseEndMsc : (long)0));
       m_ctx.state.SetLong("dd.triggers",(long)m_triggers);
       m_ctx.state.SetLong("dd.dayStart",(long)m_dayStart);
       m_ctx.state.SetDouble("dd.dayRef",m_dayRef);
@@ -658,7 +658,7 @@ public:
       if(i<0 || !m_active[i])
          return 0;
       long rem=m_until[i]-NowMs();
-      return (rem>0 ? rem : 0);
+      return (rem>0 ? rem : (long)0);
      }
 
    int               Count(const int engine)
@@ -679,7 +679,7 @@ public:
         {
          string k="cl."+IntegerToString(i)+".";
          m_ctx.state.SetLong(k+"count",(long)m_count[i]);
-         m_ctx.state.SetLong(k+"until",(m_active[i] ? m_until[i] : 0));
+         m_ctx.state.SetLong(k+"until",(m_active[i] ? m_until[i] : (long)0));
         }
      }
 
