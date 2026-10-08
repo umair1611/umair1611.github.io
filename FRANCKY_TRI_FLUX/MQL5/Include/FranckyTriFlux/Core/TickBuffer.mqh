@@ -48,7 +48,8 @@ private:
    long              m_clamped;        // ticks whose msc went backwards (clamped to the previous msc)
    long              m_skipped;        // invalid ticks ignored (bid <= 0)
    long              m_evicted;        // ticks dropped (overwrite or trim)
-   bool              m_velCovered;     // velocity reference history complete (logged once)
+   bool              m_velCovered;     // velocity reference history complete at the last Velocity() call
+   bool              m_velLogged;      // first "history complete" INFO line already written
    //--- velocity / median scratch (fixed size, no allocation per tick)
    double            m_pathFloor;      // PRICE_PATH floor in price units
    double            m_tmp[FTF_TB_SCRATCH];   // velocity buckets 0..nb
@@ -122,6 +123,29 @@ private:
          m_log.Throttled(level,FTF_TB_SRC+"."+key,m_throttleMs,FTF_TB_SRC,msg);
      }
 
+   //--- empties the buffer (capacity, logger and path floor kept)
+   void              ResetState(void)
+     {
+      m_head=0;
+      m_count=0;
+      m_hasPrev=false;
+      m_prevBid=0.0;
+      m_prevMsc=0;
+      m_oldestUndef=false;
+      m_coverFromMsc=0;
+      m_added=0;
+      m_clamped=0;
+      m_skipped=0;
+      m_evicted=0;
+      m_velCovered=false;
+      m_velLogged=false;
+      for(int k=0;k<FTF_TB_SCRATCH;k++)
+        {
+         m_tmp[k]=0.0;
+         m_sel[k]=0.0;
+        }
+     }
+
 public:
                      CTickBuffer(void)
      {
@@ -131,7 +155,7 @@ public:
       m_hasLog=false;
       m_throttleMs=5000;
       m_pathFloor=FTF_TB_PATH_FLOOR;
-      Clear();
+      ResetState();
      }
 
    //--- extra: optional logger (call before Init to get the capacity line). throttleMs = cfg.LogThrottleMs
@@ -151,23 +175,9 @@ public:
    //--- extra: forget every tick (capacity kept)
    void              Clear(void)
      {
-      m_head=0;
-      m_count=0;
-      m_hasPrev=false;
-      m_prevBid=0.0;
-      m_prevMsc=0;
-      m_oldestUndef=false;
-      m_coverFromMsc=0;
-      m_added=0;
-      m_clamped=0;
-      m_skipped=0;
-      m_evicted=0;
-      m_velCovered=false;
-      for(int k=0;k<FTF_TB_SCRATCH;k++)
-        {
-         m_tmp[k]=0.0;
-         m_sel[k]=0.0;
-        }
+      ResetState();
+      if(m_hasLog)
+         m_log.Debug(FTF_TB_SRC,"tick buffer cleared (capacity "+IntegerToString(m_cap)+")");
      }
 
    //--- docs/09 7.7: capacity rounded up to a power of two in [FTF_TB_MIN_CAPACITY, FTF_TB_MAX_CAPACITY]
@@ -189,14 +199,14 @@ public:
         {
          m_cap=0;
          m_mask=0;
-         Clear();
+         ResetState();
          if(m_hasLog)
             m_log.Error(FTF_TB_SRC,"tick buffer allocation failed for "+IntegerToString(cap)+" ticks - tick engines stay cold");
          return false;
         }
       m_cap=cap;
       m_mask=cap-1;
-      Clear();
+      ResetState();
       if(m_hasLog)
          m_log.Info(FTF_TB_SRC,"tick ring buffer ready: capacity "+IntegerToString(m_cap)+" ticks (requested "+
                     IntegerToString(capacityPow2)+", ~"+IntegerToString((long)m_cap*28/1024)+" KB)");
@@ -269,6 +279,14 @@ public:
       if(m_count<=0)
          return 0;
       return m_msc[Pos(0)];
+     }
+
+   //--- extra: newest msc - oldest msc of the stored ticks (0 when fewer than 2)
+   long              SpanMs(void)
+     {
+      if(m_count<2)
+         return 0;
+      return m_msc[Pos(0)]-m_msc[Pos(m_count-1)];
      }
 
    bool              At(const int i,STick &t)
@@ -386,6 +404,23 @@ public:
       return sum;
      }
 
+private:
+   //--- velocity history coverage state change: first completion INFO, later toggles DEBUG (throttled)
+   void              LogCoverChange(const bool covered,const int nb,const int winMs,const long needMsc)
+     {
+      if(covered && !m_velLogged)
+        {
+         m_velLogged=true;
+         m_log.Info(FTF_TB_SRC,"velocity reference history complete: "+IntegerToString(nb)+" x "+IntegerToString(winMs)+
+                    " ms buckets + current, "+IntegerToString(m_count)+" ticks stored, span "+
+                    DoubleToString((double)SpanMs()/1000.0,1)+" s");
+         return;
+        }
+      LogThrottled(FTF_LOG_DEBUG,"cover","velocity reference history "+(covered ? "complete again" : "INCOMPLETE")+
+                   " (complete from "+FTF_TimeMscStr(m_coverFromMsc)+", needed from "+FTF_TimeMscStr(needMsc)+")");
+     }
+
+public:
    //--- docs/03 1.1 + docs/09 7.7 velocity. Buckets of winMs ending at nowMsc: bucket k covers
    //--- (now-(k+1)*win, now-k*win]; nb = refMs/winMs reference buckets (cap FTF_TB_MAX_BUCKETS).
    //--- cur = bucket 0, prev = bucket 1, median = median(buckets 1..nb),
@@ -441,13 +476,8 @@ public:
       ratio=cur/MathMax(median,velFloor);
       accel=(cur-prev)/MathMax(prev,velFloor);
       bool covered=(m_added>0 && m_coverFromMsc<=nowMsc-span);
-      if(covered && !m_velCovered && m_hasLog)
-         m_log.Info(FTF_TB_SRC,"velocity reference history complete: "+IntegerToString(nb)+" x "+IntegerToString(winMs)+
-                    " ms buckets + current, "+IntegerToString(m_count)+" ticks stored, span "+
-                    DoubleToString((double)SpanMs()/1000.0,1)+" s");
-      if(covered!=m_velCovered && !covered && m_hasLog)
-         m_log.Debug(FTF_TB_SRC,"velocity reference history incomplete (cover from "+FTF_TimeMscStr(m_coverFromMsc)+
-                     ", need "+FTF_TimeMscStr(nowMsc-span)+")");
+      if(covered!=m_velCovered && m_hasLog)
+         LogCoverChange(covered,nb,winMs,nowMsc-span);
       m_velCovered=covered;
       if(m_hasLog && m_log.IsEnabled(FTF_LOG_TRACE))
          LogThrottled(FTF_LOG_TRACE,"vel","velocity "+(isPath ? "PATH" : "TICKS")+" cur "+DoubleToString(cur,6)+
@@ -499,14 +529,6 @@ public:
          p=(p>0 ? p-1 : m_mask);
         }
       return MedianInPlace(m_spr,n);
-     }
-
-   //--- extra: newest msc - oldest msc of the stored ticks (0 when fewer than 2)
-   long              SpanMs(void)
-     {
-      if(m_count<2)
-         return 0;
-      return m_msc[Pos(0)]-m_msc[Pos(m_count-1)];
      }
 
    //--- extra: the stored history is complete for msc > CoverFromMsc() (first tick or newest dropped tick)

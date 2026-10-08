@@ -38,7 +38,7 @@ private:
    bool              Ready(void)
      {
       return (CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_ctx.pf)!=POINTER_INVALID &&
-              CheckPointer(m_ctx.log)!=POINTER_INVALID && CheckPointer(m_ctx.cfg)!=POINTER_INVALID);
+              CheckPointer(m_ctx.logger)!=POINTER_INVALID && CheckPointer(m_ctx.cfg)!=POINTER_INVALID);
      }
    bool              StateOk(void)
      {
@@ -144,7 +144,7 @@ private:
    //--- decides the final exit code/detail and completes the closed-trade record
    void              DecideExit(const STrackedPos &p,SClosedTrade &info,const bool offline)
      {
-      int platformReason=(info.found ? info.exitReason : FTF_EXIT_UNKNOWN);
+      int platformReason=(info.found ? info.exitReason : (int)FTF_EXIT_UNKNOWN);
       int code=FTF_EXIT_UNKNOWN;
       string detail="";
       if(p.pendingExit!=FTF_EXIT_NONE)
@@ -203,9 +203,9 @@ private:
                  " dur "+dur+" s MAE "+DoubleToString(p.maePts,1)+" MFE "+DoubleToString(p.mfePts,1)+" pts"+
                  " | exit "+FTF_ExitStr(info.exitReason)+" | "+info.exitDetail+" | setup "+p.setupId;
       if(info.found)
-         m_ctx.log.Info("TRK",msg);
+         m_ctx.logger.Info("TRK",msg);
       else
-         m_ctx.log.Warn("TRK",msg);
+         m_ctx.logger.Warn("TRK",msg);
      }
 
    //--- remove pos[i] by shifting the tail down (no ArrayRemove on struct arrays)
@@ -261,7 +261,7 @@ private:
       bool slChanged=(MathAbs(m_snap[s].sl-pos[i].sl)>tol);
       bool tpChanged=(MathAbs(m_snap[s].tp-pos[i].tp)>tol);
       if(slChanged || tpChanged)
-         m_ctx.log.Throttled(FTF_LOG_INFO,"trk.sltp."+TicketStr(pos[i].ticket),m_ctx.cfg.LogThrottleMs,"TRK",
+         m_ctx.logger.Throttled(FTF_LOG_INFO,"trk.sltp."+TicketStr(pos[i].ticket),m_ctx.cfg.LogThrottleMs,"TRK",
                              "broker SL/TP of "+PosText(pos[i])+" now SL "+Px(m_snap[s].sl)+" TP "+Px(m_snap[s].tp)+
                              " (was SL "+Px(pos[i].sl)+" TP "+Px(pos[i].tp)+")");
       pos[i].sl=m_snap[s].sl;
@@ -275,7 +275,7 @@ private:
       //--- the broker open price is authoritative (fill price may be unknown at send time)
       if(m_snap[s].openPrice>0.0 && MathAbs(m_snap[s].openPrice-pos[i].openPrice)>tol)
         {
-         m_ctx.log.Debug("TRK","open price of "+PosText(pos[i])+" corrected "+Px(pos[i].openPrice)+" -> "+Px(m_snap[s].openPrice));
+         m_ctx.logger.Debug("TRK","open price of "+PosText(pos[i])+" corrected "+Px(pos[i].openPrice)+" -> "+Px(m_snap[s].openPrice));
          pos[i].openPrice=m_snap[s].openPrice;
          if(pt>0.0 && pos[i].requestedPrice>0.0)
             pos[i].slippagePts=(pos[i].openPrice-pos[i].requestedPrice)*(double)pos[i].dir/pt;
@@ -289,7 +289,7 @@ private:
         {
          m_missMsc[i]=m_ctx.NowMsc();
          m_missUs[i]=m_ctx.pf.Micros();
-         m_ctx.log.Debug("TRK",PosText(pos[i])+" no longer open - looking up the history");
+         m_ctx.logger.Debug("TRK",PosText(pos[i])+" no longer open - looking up the history");
         }
       SClosedTrade info;
       info.Reset();
@@ -301,7 +301,7 @@ private:
          //--- never declare a position closed without history while the terminal is disconnected
          if(waited<FTF_TRK_HISTORY_WAIT_MS || !m_ctx.pf.IsConnected())
            {
-            m_ctx.log.Throttled(FTF_LOG_DEBUG,"trk.wait."+TicketStr(pos[i].ticket),m_ctx.cfg.LogThrottleMs,"TRK",
+            m_ctx.logger.Throttled(FTF_LOG_DEBUG,"trk.wait."+TicketStr(pos[i].ticket),m_ctx.cfg.LogThrottleMs,"TRK",
                                 PosText(pos[i])+" closed, history not available yet (waited "+IntegerToString(waited)+" ms)");
             return false;
            }
@@ -358,7 +358,7 @@ private:
                   " opened "+FTF_TimeMscStr(p.openMsc)+" magic "+IntegerToString(m_snap[s].magic)+
                   " | metadata: "+(meta ? "state file" : "broker only")+
                   (meta ? " (BE "+(p.beDone ? "Y" : "N")+", trail "+(p.trailActive ? "Y" : "N")+", setup "+p.setupId+")" : "");
-      m_ctx.log.Warn("TRK","RECOVERED "+what);
+      m_ctx.logger.Warn("TRK","RECOVERED "+what);
       m_ctx.Event("RECOVERY","POSITION",what);
      }
 
@@ -439,7 +439,7 @@ private:
       QueuePending(p,info);
       string what=PosText(p)+" open "+Px(p.openPrice)+" close "+Px(info.closePrice)+" net "+DoubleToString(info.net,2)+
                   " exit "+FTF_ExitStr(info.exitReason)+" | "+info.exitDetail;
-      m_ctx.log.Warn("TRK","CLOSED WHILE OFFLINE "+what);
+      m_ctx.logger.Warn("TRK","CLOSED WHILE OFFLINE "+what);
       m_ctx.Event("RECOVERY","CLOSED_OFFLINE",what);
       return true;
      }
@@ -505,7 +505,7 @@ public:
       ArrayResize(m_pendInfo,0);
       m_recoveredCount=0;
       m_closedCount=0;
-      m_ctx.log.Info("TRK","position tracker ready: symbol "+m_ctx.symbol+" | magics "+
+      m_ctx.logger.Info("TRK","position tracker ready: symbol "+m_ctx.symbol+" | magics "+
                      IntegerToString(m_ctx.MagicFor(FTF_ENG_MOMENTUM))+"/"+IntegerToString(m_ctx.MagicFor(FTF_ENG_FVG))+"/"+
                      IntegerToString(m_ctx.MagicFor(FTF_ENG_RANGE))+" | metadata persistence "+(StateOk() ? "ON" : "OFF"));
       return true;
@@ -526,7 +526,7 @@ public:
       if(n<0)
         {
          m_lastSnapOk=false;
-         m_ctx.log.Throttled(FTF_LOG_WARN,"trk.snap",m_ctx.cfg.LogThrottleMs,"TRK",
+         m_ctx.logger.Throttled(FTF_LOG_WARN,"trk.snap",m_ctx.cfg.LogThrottleMs,"TRK",
                              "position snapshot failed - closed-position detection skipped this cycle");
          return ArraySize(closedPos);
         }
@@ -562,8 +562,8 @@ public:
      {
       if(p.ticket==0)
         {
-         if(CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_ctx.log)!=POINTER_INVALID)
-            m_ctx.log.Warn("TRK","Add refused: ticket 0 ("+FTF_EngineCode(p.engine)+" "+FTF_DirStr(p.dir)+")");
+         if(CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+            m_ctx.logger.Warn("TRK","Add refused: ticket 0 ("+FTF_EngineCode(p.engine)+" "+FTF_DirStr(p.dir)+")");
          return;
         }
       int idx=IndexOf(p.ticket);
@@ -575,14 +575,14 @@ public:
          ArrayResize(m_missMsc,total);
          ArrayResize(m_missUs,total);
         }
-      else if(CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Debug("TRK","#"+TicketStr(p.ticket)+" already tracked - record replaced");
+      else if(CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Debug("TRK","#"+TicketStr(p.ticket)+" already tracked - record replaced");
       pos[idx]=p;
       m_missMsc[idx]=0;
       m_missUs[idx]=0;
       SaveMeta(idx);
-      if(CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Debug("TRK","tracking "+PosText(p)+" open "+Px(p.openPrice)+" SL "+Px(p.sl)+" TP "+Px(p.tp)+
+      if(CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Debug("TRK","tracking "+PosText(p)+" open "+Px(p.openPrice)+" SL "+Px(p.sl)+" TP "+Px(p.tp)+
                          " ("+IntegerToString(total)+" open)");
      }
 
@@ -754,7 +754,7 @@ public:
             continue;
          if(m_pendCount>=FTF_TRK_MAX_OFFLINE)
            {
-            m_ctx.log.Warn("TRK","offline-closed queue full - metadata of #"+tickets[q]+" dropped");
+            m_ctx.logger.Warn("TRK","offline-closed queue full - metadata of #"+tickets[q]+" dropped");
             RemoveMeta(tk);
             continue;
            }
@@ -765,7 +765,7 @@ public:
         }
       string msg=IntegerToString(openRec)+" open position(s) rebuilt, "+IntegerToString(offline)+
                  " closed while offline (state "+(StateOk() ? "ON" : "OFF")+", own open now "+IntegerToString(total)+")";
-      m_ctx.log.Info("TRK","restart recovery: "+msg);
+      m_ctx.logger.Info("TRK","restart recovery: "+msg);
       if(openRec>0 || offline>0)
          m_ctx.Event("RECOVERY","START",msg);
       return openRec+offline;
@@ -780,6 +780,7 @@ public:
                " FVG "+IntegerToString(CountEngine(FTF_ENG_FVG))+" RNG "+IntegerToString(CountEngine(FTF_ENG_RANGE))+
                ") | B "+IntegerToString(CountDir(FTF_DIR_BUY))+" S "+IntegerToString(CountDir(FTF_DIR_SELL))+
                " | lots "+DoubleToString(OpenLots(),2)+" | risk "+DoubleToString(OpenRiskMoney(),2);
+      s+=" | closed "+IntegerToString(m_closedCount);
       if(m_recoveredCount>0)
          s+=" | recovered "+IntegerToString(m_recoveredCount);
       if(!m_lastSnapOk)

@@ -58,7 +58,7 @@ private:
      {
       return (CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_tracker)!=POINTER_INVALID &&
               CheckPointer(m_ctx.pf)!=POINTER_INVALID && CheckPointer(m_ctx.md)!=POINTER_INVALID &&
-              CheckPointer(m_ctx.cfg)!=POINTER_INVALID && CheckPointer(m_ctx.log)!=POINTER_INVALID);
+              CheckPointer(m_ctx.cfg)!=POINTER_INVALID && CheckPointer(m_ctx.logger)!=POINTER_INVALID);
      }
    int                PriceDigits(void)
      {
@@ -92,7 +92,7 @@ private:
         }
       return el;
      }
-   int                MaxRetries(void)
+   int                RetryLimit(void)
      {
       return (m_ctx.cfg.MaxRetries>0 ? m_ctx.cfg.MaxRetries : 0);
      }
@@ -156,7 +156,7 @@ private:
             RemoveRetryAt(i);
       if(m_rCount>=FTF_EXEC_MAX_RETRY_QUEUE)
         {
-         m_ctx.log.Warn("EXEC","retry queue full - oldest retry dropped: "+SigText(m_rSig[0],m_rLots[0]));
+         m_ctx.logger.Warn("EXEC","retry queue full - oldest retry dropped: "+SigText(m_rSig[0],m_rLots[0]));
          RemoveRetryAt(0);
         }
       int n=m_rCount+1;
@@ -264,7 +264,7 @@ private:
          cls=m_ctx.pf.ClassifyError(code);
       if(cls==FTF_ERR_NONE)
          cls=FTF_ERR_PERMANENT;           // failed without a class: never retry blindly
-      int maxR=MaxRetries();
+      int maxR=RetryLimit();
       detail=IntegerToString(code)+" "+txt+" attempt "+IntegerToString(attempt+1)+"/"+IntegerToString(maxR+1);
       string what=SigText(sig,lots)+" | "+detail;
       m_nOpenFail++;
@@ -276,25 +276,25 @@ private:
               {
                QueueRetry(sig,lots,riskMoney,attempt+1);
                detail+=" - retry queued in "+IntegerToString(m_ctx.cfg.RetryDelayMs)+" ms";
-               m_ctx.log.Warn("EXEC","OPEN FAILED (transient) "+what+" - retry queued in "+
+               m_ctx.logger.Warn("EXEC","OPEN FAILED (transient) "+what+" - retry queued in "+
                               IntegerToString(m_ctx.cfg.RetryDelayMs)+" ms");
                m_ctx.Event("RETRY","QUEUED",what);
               }
             else
               {
                detail+=" - retries exhausted";
-               m_ctx.log.Warn("EXEC","OPEN FAILED (transient, retries exhausted) "+what);
+               m_ctx.logger.Warn("EXEC","OPEN FAILED (transient, retries exhausted) "+what);
                m_ctx.Event("ORDER","REJECTED",what+" - retries exhausted");
               }
             break;
          case FTF_ERR_FATAL:
             StartErrorCooldown(detail);
-            m_ctx.log.Error("EXEC","OPEN FAILED (fatal) "+what+" - new entries paused "+
+            m_ctx.logger.Error("EXEC","OPEN FAILED (fatal) "+what+" - new entries paused "+
                             IntegerToString(m_ctx.cfg.FatalErrorCooldownSec)+" s");
             m_ctx.Event("ERROR","FATAL",what+" - entries paused "+IntegerToString(m_ctx.cfg.FatalErrorCooldownSec)+" s");
             break;
          default:
-            m_ctx.log.Warn("EXEC","OPEN FAILED (permanent) "+what);
+            m_ctx.logger.Warn("EXEC","OPEN FAILED (permanent) "+what);
             m_ctx.Event("ORDER","REJECTED",what);
             break;
         }
@@ -328,9 +328,9 @@ private:
       string msg="CLOSE send "+head+" @"+Px(px)+" (open "+Px(openPx)+", "+DoubleToString(favPts,1)+" pts) dev "+
                  IntegerToString(dev)+" pts attempt "+IntegerToString(tries)+" | "+m_tracker.pos[idx].pendingExitDetail;
       if(tries<=3 || (tries%10)==0)
-         m_ctx.log.Info("EXEC",msg);
+         m_ctx.logger.Info("EXEC",msg);
       else
-         m_ctx.log.Throttled(FTF_LOG_INFO,"exec.close."+TicketStr(tk),m_ctx.cfg.LogThrottleMs,"EXEC",msg);
+         m_ctx.logger.Throttled(FTF_LOG_INFO,"exec.close."+TicketStr(tk),m_ctx.cfg.LogThrottleMs,"EXEC",msg);
       SExecResult res;
       res.Reset();
       bool ok=m_ctx.pf.ClosePosition(tk,lots,dev,res);
@@ -340,7 +340,7 @@ private:
          m_nCloseOk++;
          string done=head+" fill "+Px(res.fillPrice)+" (req "+Px(res.requestedPrice)+") latency "+
                      DoubleToString(res.latencyMs,1)+" ms attempt "+IntegerToString(tries);
-         m_ctx.log.Info("EXEC","CLOSE OK "+done);
+         m_ctx.logger.Info("EXEC","CLOSE OK "+done);
          m_ctx.Event("ORDER","CLOSE",done+" | "+m_tracker.pos[idx].pendingExitDetail);
          return true;
         }
@@ -352,9 +352,9 @@ private:
       if(tries==1)
          m_ctx.Event("ORDER","CLOSE_FAILED",fail);
       if(tries<=3 || (tries%10)==0)
-         m_ctx.log.Warn("EXEC","CLOSE FAILED "+fail);
+         m_ctx.logger.Warn("EXEC","CLOSE FAILED "+fail);
       else
-         m_ctx.log.Throttled(FTF_LOG_WARN,"exec.closefail."+TicketStr(tk),m_ctx.cfg.LogThrottleMs,"EXEC","CLOSE FAILED "+fail);
+         m_ctx.logger.Throttled(FTF_LOG_WARN,"exec.closefail."+TicketStr(tk),m_ctx.cfg.LogThrottleMs,"EXEC","CLOSE FAILED "+fail);
       return false;
      }
 
@@ -452,9 +452,9 @@ public:
       ArrayResize(m_cLastMsc,0);
       ArrayResize(m_cLastUs,0);
       m_errActive=false;
-      m_ctx.log.Info("EXEC","execution ready: deviation "+(m_ctx.cfg.MaxDeviationPts>0 ? IntegerToString(m_ctx.cfg.MaxDeviationPts)+" pts" :
+      m_ctx.logger.Info("EXEC","execution ready: deviation "+(m_ctx.cfg.MaxDeviationPts>0 ? IntegerToString(m_ctx.cfg.MaxDeviationPts)+" pts" :
                      "auto "+DoubleToString(m_ctx.cfg.AutoDeviationSpreadMult,2)+" x spread")+
-                     " | retries "+IntegerToString(MaxRetries())+" x "+IntegerToString(m_ctx.cfg.RetryDelayMs)+" ms"+
+                     " | retries "+IntegerToString(RetryLimit())+" x "+IntegerToString(m_ctx.cfg.RetryDelayMs)+" ms"+
                      " | fatal-error pause "+IntegerToString(m_ctx.cfg.FatalErrorCooldownSec)+" s"+
                      " | min modify interval "+IntegerToString(m_ctx.cfg.MinModifyIntervalMs)+" ms"+
                      " | exec-quality guard "+(CheckPointer(m_execQ)!=POINTER_INVALID ? "linked" : "MISSING"));
@@ -462,7 +462,7 @@ public:
      }
 
    //--- market entry. attempt = 0 for the first send, n for the n-th retry
-   int                Open(const SSignal &sig,const double lots,const double riskMoney,const int attempt,const ulong cycleStartUs,
+   int                OpenTrade(const SSignal &sig,const double lots,const double riskMoney,const int attempt,const ulong cycleStartUs,
                            STrackedPos &outPos,string &detail)
      {
       outPos.Reset();
@@ -475,7 +475,7 @@ public:
       if((sig.dir!=FTF_DIR_BUY && sig.dir!=FTF_DIR_SELL) || sig.engine<1 || sig.engine>FTF_ENGINE_COUNT || lots<=0.0)
         {
          detail="invalid order (engine "+IntegerToString(sig.engine)+" dir "+IntegerToString(sig.dir)+" lots "+DoubleToString(lots,2)+")";
-         m_ctx.log.Error("EXEC","OPEN refused: "+detail);
+         m_ctx.logger.Error("EXEC","OPEN refused: "+detail);
          return FTF_REJ_ORDER_FAILED;
         }
       int dev=DeviationPts();
@@ -491,13 +491,13 @@ public:
       double decisionMs=0.0;
       if(cycleStartUs>0 && sendUs>=cycleStartUs)
          decisionMs=(double)(sendUs-cycleStartUs)/1000.0;
-      m_ctx.log.Info("EXEC","OPEN send "+SigText(sig,lots)+" @"+(sig.dir==FTF_DIR_BUY ? "ask " : "bid ")+Px(refPx)+
+      m_ctx.logger.Info("EXEC","OPEN send "+SigText(sig,lots)+" @"+(sig.dir==FTF_DIR_BUY ? "ask " : "bid ")+Px(refPx)+
                      " (signal "+Px(sig.price)+", bid "+Px(bid)+" ask "+Px(ask)+")"+
                      " SL "+Px(sl)+" ("+DoubleToString(pt>0.0 ? MathAbs(refPx-sl)/pt : 0.0,1)+" pts)"+
                      " TP "+Px(tp)+" ("+DoubleToString(pt>0.0 ? MathAbs(tp-refPx)/pt : 0.0,1)+" pts)"+
                      " spread "+DoubleToString(sig.spreadPts,1)+" pts dev "+IntegerToString(dev)+" pts"+
                      " risk "+DoubleToString(riskMoney,2)+" magic "+IntegerToString(magic)+" '"+comment+"'"+
-                     " attempt "+IntegerToString(attempt+1)+"/"+IntegerToString(MaxRetries()+1)+
+                     " attempt "+IntegerToString(attempt+1)+"/"+IntegerToString(RetryLimit()+1)+
                      " decision "+DoubleToString(decisionMs,2)+" ms");
       SExecResult res;
       res.Reset();
@@ -512,7 +512,7 @@ public:
                 DoubleToString(outPos.lots,2)+" @"+Px(outPos.openPrice)+" req "+Px(outPos.requestedPrice)+
                 " slip "+DoubleToString(outPos.slippagePts,1)+" pts latency "+DoubleToString(outPos.latencyMs,1)+
                 " ms decision "+DoubleToString(decisionMs,2)+" ms retries "+IntegerToString(attempt);
-         m_ctx.log.Info("EXEC","OPEN OK "+detail+" SL "+Px(sl)+" TP "+Px(tp)+" equity "+DoubleToString(outPos.equityAtEntry,2)+
+         m_ctx.logger.Info("EXEC","OPEN OK "+detail+" SL "+Px(sl)+" TP "+Px(tp)+" equity "+DoubleToString(outPos.equityAtEntry,2)+
                         " setup "+sig.setupId+" | "+sig.reason);
          m_ctx.Event("ORDER","OPEN",detail+" setup "+sig.setupId);
          return FTF_OK;
@@ -523,7 +523,7 @@ public:
          detail="order accepted but no ticket returned - position will be recovered by the tracker";
          m_nOpenFail++;
          m_lastError=detail;
-         m_ctx.log.Warn("EXEC","OPEN "+SigText(sig,lots)+": "+detail);
+         m_ctx.logger.Warn("EXEC","OPEN "+SigText(sig,lots)+": "+detail);
          m_ctx.Event("ORDER","NO_TICKET",SigText(sig,lots));
          return FTF_REJ_ORDER_FAILED;
         }
@@ -545,8 +545,8 @@ public:
          riskMoney=m_rRisk[i];
          attempt=m_rAttempt[i];
          RemoveRetryAt(i);
-         m_ctx.log.Debug("EXEC","retry due: "+SigText(sig,lots)+" attempt "+IntegerToString(attempt+1)+"/"+
-                         IntegerToString(MaxRetries()+1)+" ("+IntegerToString(m_rCount)+" still queued)");
+         m_ctx.logger.Debug("EXEC","retry due: "+SigText(sig,lots)+" attempt "+IntegerToString(attempt+1)+"/"+
+                         IntegerToString(RetryLimit()+1)+" ("+IntegerToString(m_rCount)+" still queued)");
          return true;
         }
       return false;
@@ -575,18 +575,18 @@ public:
      }
 
    //--- close a tracked position (index into tracker.pos). Retried by the position manager until gone
-   bool               Close(const int idx,const int exitCode,const string detail)
+   bool               CloseTrade(const int idx,const int exitCode,const string detail)
      {
       if(!Ready() || !ValidIndex(idx))
          return false;
       long now=m_ctx.NowMsc();
       if(m_tracker.pos[idx].pendingExit==FTF_EXIT_NONE)
         {
-         m_tracker.pos[idx].pendingExit=(exitCode!=FTF_EXIT_NONE ? exitCode : FTF_EXIT_UNKNOWN);
+         m_tracker.pos[idx].pendingExit=(exitCode!=FTF_EXIT_NONE ? exitCode : (int)FTF_EXIT_UNKNOWN);
          m_tracker.pos[idx].pendingExitDetail=detail;
          m_tracker.pos[idx].exitRequestMsc=now;
          m_tracker.pos[idx].exitAttempts=0;
-         m_ctx.log.Info("EXEC","EXIT request #"+TicketStr(m_tracker.pos[idx].ticket)+" "+
+         m_ctx.logger.Info("EXEC","EXIT request #"+TicketStr(m_tracker.pos[idx].ticket)+" "+
                         FTF_EngineCode(m_tracker.pos[idx].engine)+" "+FTF_DirStr(m_tracker.pos[idx].dir)+" "+
                         FTF_ExitStr(m_tracker.pos[idx].pendingExit)+" | "+detail);
          m_tracker.SaveMeta(idx);
@@ -620,7 +620,7 @@ public:
       string refusal="";
       if(!ModifyAllowed(idx,nsl,refusal))
         {
-         m_ctx.log.Throttled(FTF_LOG_DEBUG,"exec.mod."+TicketStr(tk),m_ctx.cfg.LogThrottleMs,"EXEC",
+         m_ctx.logger.Throttled(FTF_LOG_DEBUG,"exec.mod."+TicketStr(tk),m_ctx.cfg.LogThrottleMs,"EXEC",
                              "SL modify #"+TicketStr(tk)+" skipped: "+refusal+" | "+why);
          return false;
         }
@@ -642,13 +642,13 @@ public:
          m_nModOk++;
          m_tracker.pos[idx].sl=nsl;
          m_tracker.SaveMeta(idx);
-         m_ctx.log.Info("EXEC","SL MODIFY OK "+head+" latency "+DoubleToString(res.latencyMs,1)+" ms | "+why);
+         m_ctx.logger.Info("EXEC","SL MODIFY OK "+head+" latency "+DoubleToString(res.latencyMs,1)+" ms | "+why);
          return true;
         }
       m_nModFail++;
       string txt=(StringLen(res.retcodeText)>0 ? res.retcodeText : m_ctx.pf.ErrorText(res.retcode));
       m_lastError="modify "+head+" retcode "+IntegerToString(res.retcode)+" "+txt;
-      m_ctx.log.Throttled(FTF_LOG_WARN,"exec.modfail."+TicketStr(tk),m_ctx.cfg.LogThrottleMs,"EXEC",
+      m_ctx.logger.Throttled(FTF_LOG_WARN,"exec.modfail."+TicketStr(tk),m_ctx.cfg.LogThrottleMs,"EXEC",
                           "SL MODIFY FAILED "+head+" retcode "+IntegerToString(res.retcode)+" "+txt+" | "+why);
       return false;
      }

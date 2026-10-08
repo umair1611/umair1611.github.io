@@ -25,7 +25,7 @@ class CFtfContext
   {
 public:
    CConfig          *cfg;
-   CLogger          *log;
+   CLogger          *logger;
    CTradeJournal    *journal;
    CStats           *stats;
    CStateStore      *state;
@@ -42,12 +42,13 @@ public:
    int               mode;        // ENUM_FTF_MODE
    long              startMsc;    // server ms at init
    long              signalSeq;
+   string            lastEvent;   // last protection/state event (dashboard)
 
                      CFtfContext(void)
      {
-      cfg=NULL; log=NULL; journal=NULL; stats=NULL; state=NULL; pf=NULL;
+      cfg=NULL; logger=NULL; journal=NULL; stats=NULL; state=NULL; pf=NULL;
       clock=NULL; ticks=NULL; md=NULL; h1=NULL; ui=NULL;
-      symbol=""; instanceId=1; magicBase=0; mode=FTF_MODE_AGGRESSIVE; startMsc=0; signalSeq=0;
+      symbol=""; instanceId=1; magicBase=0; mode=FTF_MODE_AGGRESSIVE; startMsc=0; signalSeq=0; lastEvent="";
      }
 
    long              NextSignalId(void)
@@ -112,10 +113,11 @@ public:
    //--- protection/state event: events.csv + log
    void              Event(const string category,const string code,const string detail)
      {
+      lastEvent=FTF_TimeMscStr(NowMsc())+" "+category+"/"+code+" "+detail;
       if(CheckPointer(journal)!=POINTER_INVALID)
          journal.LogEvent(NowMsc(),category,code,detail);
-      if(CheckPointer(log)!=POINTER_INVALID)
-         log.Info("EVT",category+"/"+code+" "+detail);
+      if(CheckPointer(logger)!=POINTER_INVALID)
+         logger.Info("EVT",category+"/"+code+" "+detail);
      }
   };
 

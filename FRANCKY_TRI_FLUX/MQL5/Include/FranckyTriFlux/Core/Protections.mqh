@@ -125,22 +125,22 @@ private:
      {
       return (m_state==FTF_DDS_PAUSED ? "PAUSED" : "ARMED");
      }
-   double            CalcPct(const double eq,const double ref)
+   double            CalcPct(const double eq,const double refEq)
      {
-      if(ref<=0.0 || eq<=0.0)
+      if(refEq<=0.0 || eq<=0.0)
          return 0.0;
-      double v=(ref-eq)/ref*100.0;
+      double v=(refEq-eq)/refEq*100.0;
       return (v>0.0 ? v : 0.0);
      }
    void              LogInfo(const string msg)
      {
-      if(CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Info("DD",msg);
+      if(CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Info("DD",msg);
      }
    void              LogThrottled(const int level,const string key,const string msg)
      {
-      if(CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Throttled(level,"DD."+key,m_ctx.cfg.LogThrottleMs,"DD",msg);
+      if(CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Throttled(level,"DD."+key,m_ctx.cfg.LogThrottleMs,"DD",msg);
      }
 
    //--- strict timer: server time, or (live) wall clock
@@ -171,7 +171,7 @@ private:
      }
 
    //--- 1 STOP (+ 2 REACTIVATE / 3 VERIFY requested from the controller)
-   void              Trigger(const double eq,const double ref)
+   void              Trigger(const double eq,const double refEq)
      {
       long now=NowMs();
       long lenMs=PauseLenMs();
@@ -181,7 +181,7 @@ private:
       m_wallEndUs=GetMicrosecondCount()+(ulong)(lenMs*1000);
       m_triggers++;
       m_verifyReq=true;
-      m_ctx.Event("DD","TRIGGER","dd "+FTF_D(m_ddPct,2)+"% >= "+FTF_ProtPct(m_ctx.cfg.DdPausePct)+"% ref "+FTF_D(ref,2)+
+      m_ctx.Event("DD","TRIGGER","dd "+FTF_D(m_ddPct,2)+"% >= "+FTF_ProtPct(m_ctx.cfg.DdPausePct)+"% ref "+FTF_D(refEq,2)+
                   " ("+RefName()+") equity "+FTF_D(eq,2)+" - STOP new entries, safeties re-activated, auto restart in "+
                   IntegerToString(m_ctx.cfg.DdPauseSec)+" s (until "+FTF_TimeMscStr(m_pauseEndMsc)+", trigger #"+
                   IntegerToString(m_triggers)+")");
@@ -298,13 +298,13 @@ public:
         }
       if(eq>m_peak)
          m_peak=eq;                                      // high-water mark, tracked while ARMED
-      double ref=RefEquity();
-      m_ddPct=CalcPct(eq,ref);
+      double refEq=RefEquity();
+      m_ddPct=CalcPct(eq,refEq);
       if(m_ddPct>=m_ctx.cfg.DdPausePct)
-         Trigger(eq,ref);
+         Trigger(eq,refEq);
       else if(m_ddPct>=m_ctx.cfg.DdPausePct*FTF_PROT_DD_NEAR_RATIO)
          LogThrottled(FTF_LOG_INFO,"near","dd "+FTF_D(m_ddPct,2)+"% approaching the "+FTF_ProtPct(m_ctx.cfg.DdPausePct)+
-                      "% pause (ref "+FTF_D(ref,2)+" "+RefName()+", equity "+FTF_D(eq,2)+")");
+                      "% pause (ref "+FTF_D(refEq,2)+" "+RefName()+", equity "+FTF_D(eq,2)+")");
      }
 
    //--- also enforces the strict timer when Update() has not run yet this cycle
@@ -445,13 +445,13 @@ public:
       bool ok=true;
       string issues="";
       double eq=m_ctx.pf.Equity();
-      double ref=RefEquity();
+      double refEq=RefEquity();
       if(eq<=0.0)
         {
          ok=false;
          issues+=" | equity unavailable";
         }
-      if(ref<=0.0)
+      if(refEq<=0.0)
         {
          ok=false;
          issues+=" | reference not set";
@@ -474,7 +474,7 @@ public:
            }
          pause=", auto restart in "+FTF_D((double)PauseRemainingMs()/1000.0,1)+" s";
         }
-      d="state "+StateName()+", dd "+FTF_D(m_ddPct,2)+"% / "+FTF_ProtPct(m_ctx.cfg.DdPausePct)+"%, ref "+FTF_D(ref,2)+
+      d="state "+StateName()+", dd "+FTF_D(m_ddPct,2)+"% / "+FTF_ProtPct(m_ctx.cfg.DdPausePct)+"%, ref "+FTF_D(refEq,2)+
         " ("+RefName()+"), peak "+FTF_D(m_peak,2)+", equity "+FTF_D(eq,2)+", pause "+IntegerToString(m_ctx.cfg.DdPauseSec)+
         " s strict timer ("+(m_isTester ? "server time" : "server time + wall clock")+")"+pause+", triggers "+
         IntegerToString(m_triggers)+issues;
@@ -585,8 +585,8 @@ public:
          m_until[i]=0;
          m_active[i]=false;
         }
-      if(CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Info("CONSEC","consecutive-loss protection "+(m_ctx.cfg.ConsecEnabled ? "ON" : "OFF")+": "+
+      if(CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Info("CONSEC","consecutive-loss protection "+(m_ctx.cfg.ConsecEnabled ? "ON" : "OFF")+": "+
                         IntegerToString(m_ctx.cfg.ConsecMaxLosses)+" losses in a row -> cooldown "+
                         IntegerToString(m_ctx.cfg.ConsecCooldownMin)+" min, scope "+(InstanceScope() ? "INSTANCE" : "ENGINE"));
       return true;
@@ -602,15 +602,15 @@ public:
          return;
       if(net>=0.0)
         {
-         if(m_count[i]>0 && CheckPointer(m_ctx.log)!=POINTER_INVALID)
-            m_ctx.log.Info("CONSEC",Who(i)+": loss streak of "+IntegerToString(m_count[i])+" reset by a non-losing trade (net "+FTF_D(net,2)+")");
+         if(m_count[i]>0 && CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+            m_ctx.logger.Info("CONSEC",Who(i)+": loss streak of "+IntegerToString(m_count[i])+" reset by a non-losing trade (net "+FTF_D(net,2)+")");
          m_count[i]=0;
          Save();
          return;
         }
       m_count[i]++;
-      if(CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Info("CONSEC",Who(i)+": loss "+IntegerToString(m_count[i])+"/"+IntegerToString(m_ctx.cfg.ConsecMaxLosses)+
+      if(CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Info("CONSEC",Who(i)+": loss "+IntegerToString(m_count[i])+"/"+IntegerToString(m_ctx.cfg.ConsecMaxLosses)+
                         " in a row (net "+FTF_D(net,2)+", engine "+FTF_EngineCode(engine)+")");
       if(m_count[i]>=m_ctx.cfg.ConsecMaxLosses)
         {
@@ -703,8 +703,8 @@ public:
          long u=m_ctx.state.GetLong(k+"until",0);
          if(u>0 && now>0 && u<=now)
            {
-            if(CheckPointer(m_ctx.log)!=POINTER_INVALID)
-               m_ctx.log.Info("CONSEC",Who(i)+": cooldown (end "+FTF_TimeMscStr(u)+") expired while the EA was offline");
+            if(CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+               m_ctx.logger.Info("CONSEC",Who(i)+": cooldown (end "+FTF_TimeMscStr(u)+") expired while the EA was offline");
             u=0;
            }
          if(u>0 && now>0 && u-now>CooldownMs())
@@ -754,13 +754,14 @@ public:
          CheckExpiry(i);
          if(!m_active[i])
             continue;
+         bool clamped=false;
          if(m_until[i]-now>CooldownMs())
            {
             ok=false;
+            clamped=true;
             m_until[i]=now+CooldownMs();                 // clamp corrupted value
-            act+=Who(i)+" (clamped) ";
            }
-         act+=Who(i)+" "+FTF_ProtDur(m_until[i]-now)+" ";
+         act+=Who(i)+" "+FTF_ProtDur(m_until[i]-now)+(clamped ? " (clamped)" : "")+" ";
         }
       d="max "+IntegerToString(m_ctx.cfg.ConsecMaxLosses)+" losses, cooldown "+IntegerToString(m_ctx.cfg.ConsecCooldownMin)+
         " min, scope "+(InstanceScope() ? "INSTANCE" : "ENGINE")+", counts "+Counts()+", active cooldowns: "+
@@ -790,6 +791,7 @@ private:
    string            m_badWhy;
    bool              m_blocked;        // BLOCK action running
    long              m_blockUntil;     // server ms
+   string            m_blockWhy;       // reason of the running block
 
    bool              Ready(void)
      {
@@ -876,6 +878,7 @@ private:
    void              StartBlock(const string why)
      {
       m_blocked=true;
+      m_blockWhy=why;
       m_blockUntil=NowMs()+(long)m_ctx.cfg.ExecQualityCooldownSec*1000;
       m_ctx.Event("EXECQ","BLOCK",why+" - no new entries for "+IntegerToString(m_ctx.cfg.ExecQualityCooldownSec)+
                   " s (until "+FTF_TimeMscStr(m_blockUntil)+")");
@@ -885,6 +888,7 @@ private:
      {
       m_blocked=false;
       m_blockUntil=0;
+      m_blockWhy="";
       ClearWindow();
       m_ctx.Event("EXECQ","RESUME","execution-quality cooldown of "+IntegerToString(m_ctx.cfg.ExecQualityCooldownSec)+
                   " s ended - fill window cleared, new entries allowed");
@@ -927,7 +931,7 @@ public:
                      CExecQualityGuard(void)
      {
       m_ctx=NULL; m_cap=0; m_n=0; m_pos=0; m_fills=0; m_bad=false; m_badWhy="";
-      m_blocked=false; m_blockUntil=0;
+      m_blocked=false; m_blockUntil=0; m_blockWhy="";
      }
 
    bool              Init(CFtfContext *ctx)
@@ -952,11 +956,12 @@ public:
       m_fills=0;
       m_blocked=false;
       m_blockUntil=0;
+      m_blockWhy="";
       ClearWindow();
       string lim=(m_ctx.cfg.MaxAvgSlippageSpreadMult>0.0 ? "slip <= "+FTF_D(m_ctx.cfg.MaxAvgSlippageSpreadMult,2)+" x avg spread" : "slip check off");
       lim+=(m_ctx.cfg.MaxAvgLatencyMs>0 ? ", avg latency <= "+IntegerToString(m_ctx.cfg.MaxAvgLatencyMs)+"ms" : ", latency check off");
-      if(CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Info("EXECQ","execution-quality guard: action "+ActionName()+", window "+IntegerToString(m_cap)+" fills (min "+
+      if(CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Info("EXECQ","execution-quality guard: action "+ActionName()+", window "+IntegerToString(m_cap)+" fills (min "+
                         IntegerToString(FTF_PROT_EXECQ_MIN_SAMPLES)+"), "+lim+", cooldown "+IntegerToString(m_ctx.cfg.ExecQualityCooldownSec)+
                         " s, lot factor "+FTF_D(m_ctx.cfg.ExecQualityLotFactor,2));
       return true;
@@ -974,8 +979,8 @@ public:
       if(m_n<m_cap)
          m_n++;
       m_fills++;
-      if(CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Debug("EXECQ","fill #"+IntegerToString(m_fills)+": adverse slip "+FTF_D(adverseSlipPts,2)+"pt latency "+
+      if(CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Debug("EXECQ","fill #"+IntegerToString(m_fills)+": adverse slip "+FTF_D(adverseSlipPts,2)+"pt latency "+
                          FTF_D(latencyMs,1)+"ms spread "+FTF_D(spreadPts,1)+"pt | "+Summary());
       Reassess();
      }
@@ -992,14 +997,14 @@ public:
          long now=NowMs();
          if(now<m_blockUntil)
            {
-            detail="execution quality poor ("+m_badWhy+") - blocked "+FTF_ProtDur(m_blockUntil-now)+" more";
+            detail="execution quality poor ("+m_blockWhy+") - blocked "+FTF_ProtDur(m_blockUntil-now)+" more";
             return true;
            }
          EndBlock();
          return false;
         }
-      if(m_bad && CheckPointer(m_ctx.log)!=POINTER_INVALID)
-         m_ctx.log.Throttled(FTF_LOG_WARN,"EXECQ.bad",m_ctx.cfg.LogThrottleMs,"EXECQ","execution quality out of tolerance: "+m_badWhy+
+      if(m_bad && CheckPointer(m_ctx.logger)!=POINTER_INVALID)
+         m_ctx.logger.Throttled(FTF_LOG_WARN,"EXECQ.bad",m_ctx.cfg.LogThrottleMs,"EXECQ","execution quality out of tolerance: "+m_badWhy+
                              (Action()==FTF_EXECQ_REDUCE_LOT ? " - lots x"+FTF_D(m_ctx.cfg.ExecQualityLotFactor,2) : " - LOG_ONLY"));
       return false;
      }
@@ -1058,7 +1063,7 @@ public:
       d="action "+ActionName()+", "+Summary()+" (window "+IntegerToString(m_cap)+"), limits: "+lim;
       if(m_blocked)
         {
-         d+=" - BLOCKED "+FTF_ProtDur(m_blockUntil-NowMs())+" ("+m_badWhy+")";
+         d+=" - BLOCKED "+FTF_ProtDur(m_blockUntil-NowMs())+" ("+m_blockWhy+")";
          return false;
         }
       if(m_bad)

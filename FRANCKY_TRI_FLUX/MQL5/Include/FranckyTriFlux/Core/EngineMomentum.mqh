@@ -554,7 +554,7 @@ public:
          return 0;
       MeasureFlow();
       MeasureRange();
-      if(CheckPointer(m_ctx.log)!=POINTER_INVALID && m_ctx.log.IsEnabled(FTF_LOG_TRACE))
+      if(CheckPointer(m_ctx.logger)!=POINTER_INVALID && m_ctx.logger.IsEnabled(FTF_LOG_TRACE))
          Log(FTF_LOG_TRACE,"tick "+LiveText()+RangeText()+" roc "+RocText());
       string whyB="";
       string whyS="";
@@ -678,9 +678,9 @@ public:
    //--- bar data is cached by CMarketData; only a DEBUG context line per M1 bar here
    virtual void      OnNewBar(const ENUM_TIMEFRAMES tf)
      {
-      if(!m_enabled || tf!=PERIOD_M1 || CheckPointer(m_ctx)==POINTER_INVALID || CheckPointer(m_ctx.log)==POINTER_INVALID)
+      if(!m_enabled || tf!=PERIOD_M1 || CheckPointer(m_ctx)==POINTER_INVALID || CheckPointer(m_ctx.logger)==POINTER_INVALID)
          return;
-      if(!m_ctx.log.IsEnabled(FTF_LOG_DEBUG))
+      if(!m_ctx.logger.IsEnabled(FTF_LOG_DEBUG))
          return;
       m_roc=m_ctx.md.RocM1();
       Log(FTF_LOG_DEBUG,"new M1 bar: roc "+RocText()+" atr "+Pts(m_ctx.md.AtrM1())+CtxText()+" | "+

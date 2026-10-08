@@ -63,7 +63,7 @@ private:
       m_autoValid=false;
       m_autoOffset=0;
       m_autoRaw=0;
-      m_autoQueryTime=0;
+      m_autoQueryTime=(datetime)0;
       m_autoFails=0;
       m_dstHourKey=-1;
       m_dstVal=false;

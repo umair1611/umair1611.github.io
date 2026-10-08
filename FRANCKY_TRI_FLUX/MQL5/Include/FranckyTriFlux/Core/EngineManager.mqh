@@ -54,7 +54,7 @@ public:
       for(int e=1;e<=FTF_ENGINE_COUNT;e++)
          if(!m_eng[e].Init(ctx))
            {
-            m_ctx.log.Error("MGR","engine "+FTF_EngineName(e)+" failed to initialise");
+            m_ctx.logger.Error("MGR","engine "+FTF_EngineName(e)+" failed to initialise");
             ok=false;
            }
       m_tfCount=0;
@@ -63,7 +63,7 @@ public:
       AddTf(PERIOD_H1);
       AddTf(m_ctx.cfg.FvgTimeframe);
       AddTf(m_ctx.cfg.RngTimeframe);
-      m_ctx.log.Info("MGR","engines ready: "+IntegerToString(EnabledCount())+" enabled (Momentum "+
+      m_ctx.logger.Info("MGR","engines ready: "+IntegerToString(EnabledCount())+" enabled (Momentum "+
                      (m_mom.Enabled() ? "ON" : "OFF")+", FVG "+(m_fvg.Enabled() ? "ON" : "OFF")+", Range "+
                      (m_rng.Enabled() ? "ON" : "OFF")+")");
       return ok;

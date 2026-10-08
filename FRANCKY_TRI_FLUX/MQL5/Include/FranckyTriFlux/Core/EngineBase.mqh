@@ -25,19 +25,19 @@ protected:
    //--- helpers for derived engines
    void              Log(const int level,const string msg)
      {
-      if(CheckPointer(m_ctx)==POINTER_INVALID || CheckPointer(m_ctx.log)==POINTER_INVALID)
+      if(CheckPointer(m_ctx)==POINTER_INVALID || CheckPointer(m_ctx.logger)==POINTER_INVALID)
          return;
-      if(level<=FTF_LOG_ERROR)      m_ctx.log.Error(m_code,msg);
-      else if(level==FTF_LOG_WARN)  m_ctx.log.Warn(m_code,msg);
-      else if(level==FTF_LOG_INFO)  m_ctx.log.Info(m_code,msg);
-      else if(level==FTF_LOG_DEBUG) m_ctx.log.Debug(m_code,msg);
-      else                          m_ctx.log.Trace(m_code,msg);
+      if(level<=FTF_LOG_ERROR)      m_ctx.logger.Error(m_code,msg);
+      else if(level==FTF_LOG_WARN)  m_ctx.logger.Warn(m_code,msg);
+      else if(level==FTF_LOG_INFO)  m_ctx.logger.Info(m_code,msg);
+      else if(level==FTF_LOG_DEBUG) m_ctx.logger.Debug(m_code,msg);
+      else                          m_ctx.logger.Trace(m_code,msg);
      }
    void              LogThrottled(const int level,const string key,const string msg)
      {
-      if(CheckPointer(m_ctx)==POINTER_INVALID || CheckPointer(m_ctx.log)==POINTER_INVALID)
+      if(CheckPointer(m_ctx)==POINTER_INVALID || CheckPointer(m_ctx.logger)==POINTER_INVALID)
          return;
-      m_ctx.log.Throttled(level,m_code+"."+key,m_ctx.cfg.LogThrottleMs,m_code,msg);
+      m_ctx.logger.Throttled(level,m_code+"."+key,m_ctx.cfg.LogThrottleMs,m_code,msg);
      }
    //--- fills the common part of a signal
    void              PrepareSignal(SSignal &s,const int dir,const string setupId,const string tfText)

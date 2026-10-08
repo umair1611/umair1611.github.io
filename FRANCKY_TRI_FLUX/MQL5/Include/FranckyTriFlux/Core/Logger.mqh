@@ -284,6 +284,17 @@ public:
          Write(level,src,msg);
      }
 
+   //--- write to ftf.log only, never to the Experts journal (configuration dump at start)
+   void              FileOnly(const string src,const string msg)
+     {
+      if(!m_toFile || m_handle==INVALID_HANDLE || m_level<=FTF_LOG_OFF)
+         return;
+      string line=FTF_TimeMscStr(StampMsc())+" | INFO  | "+Pad(src,4)+" | "+msg;
+      FileWriteString(m_handle,line+"\r\n");
+      m_unflushed++;
+      m_lines++;
+     }
+
    void              Flush(void)
      {
       if(m_handle!=INVALID_HANDLE)

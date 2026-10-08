@@ -34,7 +34,7 @@ private:
       return (CheckPointer(m_ctx)!=POINTER_INVALID && CheckPointer(m_tracker)!=POINTER_INVALID &&
               CheckPointer(m_exec)!=POINTER_INVALID && CheckPointer(m_engMgr)!=POINTER_INVALID &&
               CheckPointer(m_ctx.md)!=POINTER_INVALID && CheckPointer(m_ctx.cfg)!=POINTER_INVALID &&
-              CheckPointer(m_ctx.log)!=POINTER_INVALID);
+              CheckPointer(m_ctx.logger)!=POINTER_INVALID);
      }
    int               PriceDigits(void)
      {
@@ -71,9 +71,10 @@ private:
    void              RequestExit(const int i,const int code,const string detail)
      {
       m_nExitReq++;
-      m_ctx.log.Info("PMG","EXIT "+FTF_ExitStr(code)+" "+PosHead(i)+" "+DoubleToString(m_tracker.pos[i].lots,2)+
-                     " | "+detail);
-      m_exec.Close(i,code,detail);
+      //--- the execution engine logs the request at INFO (ticket, engine, dir, exit code, detail)
+      m_ctx.logger.Debug("PMG","exit decision "+FTF_ExitStr(code)+" "+PosHead(i)+" "+DoubleToString(m_tracker.pos[i].lots,2)+
+                      " | "+detail);
+      m_exec.CloseTrade(i,code,detail);
      }
 
    //--- docs/03 6.4: engine-specific exit (Momentum loss / invalidation, FVG invalidated, Range breakout)
@@ -160,7 +161,7 @@ private:
         {
          m_tracker.pos[i].beDone=true;
          m_tracker.SaveMeta(i);
-         m_ctx.log.Info("PMG","BE reached "+PosHead(i)+": SL "+Px(cur)+" already at/beyond lock "+Px(target)+" | "+why);
+         m_ctx.logger.Info("PMG","BE reached "+PosHead(i)+": SL "+Px(cur)+" already at/beyond lock "+Px(target)+" | "+why);
          return;
         }
       if(m_exec.ModifySL(i,target,why))
@@ -185,7 +186,7 @@ private:
         {
          m_tracker.pos[i].trailActive=true;
          m_tracker.SaveMeta(i);
-         m_ctx.log.Info("PMG","TRAIL active "+PosHead(i)+": favourable "+DoubleToString(fav,1)+" pts >= "+
+         m_ctx.logger.Info("PMG","TRAIL active "+PosHead(i)+": favourable "+DoubleToString(fav,1)+" pts >= "+
                         DoubleToString(trig,1)+"% of D "+DoubleToString(dPts,1)+" pts");
         }
       int dir=m_tracker.pos[i].dir;
@@ -199,8 +200,8 @@ private:
       double impr=(cur>0.0 ? (double)dir*(cand-cur) : step);
       if(impr+pt*0.01<step)
         {
-         if(m_ctx.log.IsEnabled(FTF_LOG_TRACE))
-            m_ctx.log.Trace("PMG","trail "+PosHead(i)+" cand "+Px(cand)+" vs SL "+Px(cur)+" improvement "+
+         if(m_ctx.logger.IsEnabled(FTF_LOG_TRACE))
+            m_ctx.logger.Trace("PMG","trail "+PosHead(i)+" cand "+Px(cand)+" vs SL "+Px(cur)+" improvement "+
                             DoubleToString(impr/pt,1)+" < step "+DoubleToString(step/pt,1)+" pts");
          return;
         }
@@ -223,7 +224,7 @@ private:
       //--- (a) exit already requested: retry until the position is gone
       if(m_tracker.pos[i].pendingExit!=FTF_EXIT_NONE)
         {
-         m_exec.Close(i,m_tracker.pos[i].pendingExit,m_tracker.pos[i].pendingExitDetail);
+         m_exec.CloseTrade(i,m_tracker.pos[i].pendingExit,m_tracker.pos[i].pendingExitDetail);
          return;
         }
       //--- (b) engine-specific exit
@@ -236,7 +237,7 @@ private:
       double dist=TpDistance(i);
       if(dist<=0.0 || openPx<=0.0)
         {
-         m_ctx.log.Throttled(FTF_LOG_DEBUG,"pmg.nod."+IntegerToString((long)m_tracker.pos[i].ticket),m_ctx.cfg.LogThrottleMs,
+         m_ctx.logger.Throttled(FTF_LOG_DEBUG,"pmg.nod."+IntegerToString((long)m_tracker.pos[i].ticket),m_ctx.cfg.LogThrottleMs,
                              "PMG",PosHead(i)+": no TP distance - break-even/trailing skipped");
          return;
         }
@@ -274,7 +275,7 @@ public:
             DoubleToString(m_ctx.cfg.EngineBeTriggerPct(e),0)+"/"+DoubleToString(m_ctx.cfg.EngineBeLockPct(e),0)+
             "% trail "+DoubleToString(m_ctx.cfg.EngineTrailTriggerPct(e),0)+"/"+DoubleToString(m_ctx.cfg.EngineTrailDistPct(e),0)+
             "/"+DoubleToString(m_ctx.cfg.EngineTrailStepPct(e),0)+"%";
-      m_ctx.log.Info("PMG",s);
+      m_ctx.logger.Info("PMG",s);
       return true;
      }
 
@@ -288,7 +289,7 @@ public:
       double pt=m_ctx.md.PointSize();
       if(bid<=0.0 || ask<=0.0 || pt<=0.0)
         {
-         m_ctx.log.Throttled(FTF_LOG_WARN,"pmg.quote",m_ctx.cfg.LogThrottleMs,"PMG",
+         m_ctx.logger.Throttled(FTF_LOG_WARN,"pmg.quote",m_ctx.cfg.LogThrottleMs,"PMG",
                              "no valid quote (bid "+Px(bid)+" ask "+Px(ask)+") - positions not managed this cycle");
          return;
         }
