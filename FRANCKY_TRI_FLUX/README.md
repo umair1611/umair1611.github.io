@@ -13,7 +13,7 @@ source files** — only the platform layer differs.
 |---|---|
 | End user / trader | [`docs/04_User_Manual.md`](docs/04_User_Manual.md), then [`docs/05_Input_Parameters_Reference.md`](docs/05_Input_Parameters_Reference.md) |
 | Tester / optimizer | [`docs/07_Testing_and_Optimization_Protocol.md`](docs/07_Testing_and_Optimization_Protocol.md), [`docs/06_Logs_and_Diagnostics.md`](docs/06_Logs_and_Diagnostics.md) |
-| Developer / AI agent | [`docs/09_SSOT_Developer_Contract.md`](docs/09_SSOT_Developer_Contract.md), [`docs/10_Agent_Implementation_Brief.md`](docs/10_Agent_Implementation_Brief.md), [`docs/02_Architecture_and_Workflow.md`](docs/02_Architecture_and_Workflow.md), [`docs/03_Strategy_Logic.md`](docs/03_Strategy_Logic.md) |
+| Developer / AI agent | [`docs/09_SSOT_Developer_Contract.md`](docs/09_SSOT_Developer_Contract.md), [`docs/09a_Public_API_Generated.md`](docs/09a_Public_API_Generated.md), [`docs/10_Agent_Implementation_Brief.md`](docs/10_Agent_Implementation_Brief.md), [`docs/02_Architecture_and_Workflow.md`](docs/02_Architecture_and_Workflow.md), [`docs/03_Strategy_Logic.md`](docs/03_Strategy_Logic.md) |
 | Project owner | [`docs/01_Specification_EN_Corrected.md`](docs/01_Specification_EN_Corrected.md), [`docs/01a_Translation_Review.md`](docs/01a_Translation_Review.md), [`docs/11_Requirements_Traceability.md`](docs/11_Requirements_Traceability.md), [`docs/12_Design_Decisions_and_Open_Questions.md`](docs/12_Design_Decisions_and_Open_Questions.md), [`docs/08_MT4_Divergences.md`](docs/08_MT4_Divergences.md) |
 
 ## Layout
@@ -29,6 +29,8 @@ Tester/MT5, Tester/MT4                              tester .ini + .set per engin
 tools/ftf_spec.py                                   single source of truth for all inputs
 tools/generate.py                                   regenerates inputs, config, presets, ini, docs/05
 tools/check_core.py                                 Core identity MT5/MT4 + portability static checks
+tools/check_api.py                                  cross-module member / call-arity checker (no compiler needed)
+tools/gen_api_doc.py                                regenerates docs/09a (public API list) from the code
 tools/analyze_logs.py                               per engine/symbol report from the CSV journals
 docs/                                               all documentation
 ```
@@ -38,5 +40,6 @@ docs/                                               all documentation
 2. Compile `FranckyTriFlux.mq5` in MetaEditor 5 and `FranckyTriFlux.mq4` in MetaEditor 4 (F7).
 3. After any change to inputs: edit `tools/ftf_spec.py`, run `python3 tools/generate.py`.
 4. After any Core change (edit the MQL5 copy): `python3 tools/check_core.py --sync`.
+5. Static checks before compiling: `python3 tools/check_core.py && python3 tools/check_api.py && python3 tools/gen_api_doc.py --check && python3 tools/generate.py --check`.
 
 No DLL, no licence server, no expiry, no account/PC lock — perpetual, unlimited installations.

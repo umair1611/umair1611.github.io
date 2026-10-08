@@ -106,15 +106,28 @@ def main():
 
     # 6 platform API parity
     def api(path):
+        """public method names of class CPlatform (declarations at member indentation only)"""
         if not os.path.exists(path):
             return None
-        code = strip(open(path, encoding="utf-8", errors="replace").read())
-        m = re.search(r"class\s+CPlatform\b(.*?)\n\s*};", code, re.S)
-        if not m:
-            return None
-        body = m.group(1)
-        pub = body.split("public:", 1)[1] if "public:" in body else body
-        names = set(re.findall(r"\b([A-Z]\w*)\s*\([^;{]*\)\s*(?:const\s*)?[{;]", pub))
+        lines = strip(open(path, encoding="utf-8", errors="replace").read()).split("\n")
+        inside, access, names = False, "private", set()
+        for ln in lines:
+            if re.match(r"^class\s+CPlatform\b", ln):
+                inside, access = True, "private"
+                continue
+            if not inside:
+                continue
+            if re.match(r"^\s*};", ln):
+                break
+            m = re.match(r"^(public|private|protected):", ln)
+            if m:
+                access = m.group(1)
+                continue
+            if access != "public":
+                continue
+            m = re.match(r"^ {3}(?:virtual\s+)?[A-Za-z_][\w]*\s+\*?\s*([A-Za-z_]\w*)\s*\(", ln)
+            if m:
+                names.add(m.group(1))
         return names
     a5 = api(os.path.join(ROOT, "MQL5", "Include", "FranckyTriFlux", "Platform", "Platform.mqh"))
     a4 = api(os.path.join(ROOT, "MQL4", "Include", "FranckyTriFlux", "Platform", "Platform.mqh"))

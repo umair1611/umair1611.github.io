@@ -15,16 +15,45 @@ or understand the behaviour in backtests, demo and live.
 
 ## 2. ftf.log (human readable)
 ```
-2026.10.07 10:35:01.123 | INFO  | MOM  | SIGNAL BUY imb 0.66 vel 1.42x acc +31% brk 1.08523+0.6pt roc +0.012% q=96
-2026.10.07 10:35:01.124 | INFO  | EXEC | OPEN BUY 0.10 EURUSD @1.08525 req 1.08525 slip 0.0pt lat 6.8ms sl 1.08491 tp 1.08545 magic 5100011 [FTF|MOM|I1|MOM-B-1.08523]
-2026.10.07 10:35:19.870 | INFO  | PM   | BE ticket 123456 SL 1.08491 -> 1.08526 (fav 14.1pt >= 70% of 20.0pt)
-2026.10.07 10:35:31.002 | INFO  | CTRL | EXIT ticket 123456 MOM TP net +2.00 dur 29.9s MAE 3.1pt MFE 20.4pt
-2026.10.07 10:40:00.000 | INFO  | EVT  | NEWS/BLOCK_START NEWS USD HIGH Non-Farm Payrolls 12:30 (-10m)
+2026.10.07 10:35:01.123 | INFO  | MOM  | SIGNAL #412 BUY MOM-B-1.08523 @1.08525 sl 1.08491 tp 1.08545 inval 1.08523 q 96 ttl 300ms | imb 0.66 vel 1.42x acc +31% brk 1.08523+0.6pt ...
+2026.10.07 10:35:01.124 | INFO  | EXEC | OPEN send MOM BUY 0.10 lots setup MOM-B-1.08523 @ask 1.08525 (signal 1.08525, bid 1.08523 ask 1.08525) SL 1.08491 (34.0 pts) TP 1.08545 (20.0 pts) spread 2.0 pts dev 4 pts risk 34.00 magic 5100011 'FTF|MOM|I1|MOM-B-1.08523' attempt 1/3 decision 0.21 ms
+2026.10.07 10:35:01.131 | INFO  | EXEC | OPEN OK #123456 MOM BUY 0.10 @1.08525 req 1.08525 slip 0.0 pts latency 6.8 ms decision 0.21 ms retries 0 SL 1.08491 TP 1.08545 equity 10000.00 setup MOM-B-1.08523 | ...
+2026.10.07 10:35:19.870 | INFO  | EXEC | SL MODIFY OK #123456 MOM BUY SL 1.08491 -> 1.08526 (35.0 pts) TP 1.08545 bid 1.08540 ask 1.08542 latency 5.1 ms | BE: favourable 15.0 pts >= 70.0% of D 20.0 pts -> lock 5.0% at 1.08526
+2026.10.07 10:35:31.002 | INFO  | TRK  | CLOSED #123456 MOM BUY 0.10 open 1.08525 close 1.08545 net 2.00 (gross 2.00 comm 0.00 swap 0.00) dur 29.9 s MAE 3.1 MFE 20.4 pts | exit TP | ... | setup MOM-B-1.08523
+2026.10.07 10:40:00.000 | INFO  | EVT  | NEWS/BLOCK_START NEWS USD HIGH Non-Farm Payrolls 12:30 (-10m) window 12:20-12:35 server - no new entries
 ```
-Columns: server time with milliseconds | level | module | message. Modules: `CTRL` controller, `MOM` `FVG`
-`RNG` engines, `MGR` engine manager, `GATE` safety gate, `EXEC` execution, `PM` position manager, `TRK`
-tracker, `RISK`, `EXPO`, `MI` multi-instance, `DD` drawdown, `CL` consecutive losses, `EQ` execution quality,
-`NEWS`, `SESS`, `ROLL`, `MD` market data, `H1`, `PF` platform, `UI`, `LOG`, `EVT` events.
+Columns: server time with milliseconds | level | module (source tag) | message.
+
+| Tag | Module (file) | What it logs |
+|---|---|---|
+| `CTRL` | controller (Controller.mqh) | start-up, pipeline, safety verification sequence, periodic summaries |
+| `CFG` | configuration dump (Controller.mqh) | every effective input at start (`[GROUP] parameter = value`, ftf.log only) |
+| `MOM` `FVG` `RNG` | engines (EngineMomentum / EngineFVG / EngineRange.mqh) | measurements, zones, boxes, signals, engine exits |
+| `MGR` | engine manager (EngineManager.mqh) | engine list, enable/disable |
+| `CR` | conflict resolver (ConflictResolver.mqh) | opposite signals, hold windows, confirmation queue |
+| `GATE` | safety gate (SafetyGate.mqh) | global blocks and every per-signal rejection with numbers |
+| `RISK` | risk manager (RiskManager.mqh) | lot sizing, margin, martingale steps |
+| `EXPO` | exposure guard (RiskManager.mqh) | currency / correlation exposure checks |
+| `MI` | multi-instance guard (RiskManager.mqh) | heartbeat, duplicate instance detection |
+| `EXEC` | execution (Execution.mqh) | order send / fill / reject / retry, closes, SL modifications |
+| `EXECQ` | execution-quality guard (Protections.mqh) | rolling slippage / latency, BLOCK / REDUCE_LOT |
+| `PMG` | position manager (PositionManager.mqh) | exit decisions, break-even, trailing |
+| `TRK` | position tracker (PositionTracker.mqh) | tracked positions, closures with exit reason, restart recovery |
+| `DD` | drawdown guard (Protections.mqh) | 10 % pause trigger, timer, restart, re-based reference |
+| `CONSEC` | consecutive-loss guard (Protections.mqh) | loss streaks, cooldowns |
+| `NEWS` `SESS` `ROLL` | filters (Filters.mqh) | news source/load/blocks, session open/close, rollover window |
+| `MD` | market data (MarketData.mqh) | ticks, bars, spread / ATR, data readiness |
+| `TBUF` | tick buffer (TickBuffer.mqh) | ring capacity, velocity history coverage |
+| `H1` | H1 context (H1Context.mqh) | H1 state changes, STRICT blocks |
+| `STR` | structure (Structure.mqh) | swing scans (TRACE) |
+| `CLK` | clock (Clock.mqh) | broker GMT offset (AUTO / MANUAL / DST) |
+| `STAT` | statistics (Stats.mqh) | per-trade stats, daily recap, OnTester value |
+| `JRNL` | CSV journals (Journal.mqh) | file open / write problems |
+| `STOR` | state store (StateStore.mqh) | state file load / save |
+| `UI` | chart panel and drawings (ChartUI.mqh) | object limits, panel problems |
+| `PF` | platform layer (Platform.mqh, MT4/MT5) | broker calls, retcodes, calendar / web requests |
+| `LOG` | logger (Logger.mqh) | logger start / stop, file problems |
+| `EVT` | events (Context.mqh) | copy of every events.csv row (`CATEGORY/CODE detail`) |
 
 Levels (**Log level**): ERROR < WARN < INFO (default: decisions, entries, exits, protections) < DEBUG (every
 rejected setup with numbers, indicator snapshots on every new M1 bar) < TRACE (per-tick internals).
@@ -43,7 +72,7 @@ documents the settings that produced it.
 | sl, tp, sl_pts, tp_pts | proposed stop / target (absolute and in points) |
 | quality, h1, struct_ok | engine internal quality, H1 context, BOS/CHoCH present (FVG) |
 | lots | computed lot (0 when refused before sizing) |
-| decision | `ACCEPTED` or `REJECTED` |
+| decision | `ACCEPTED`, `REJECTED`, or `PENDING` (parked for the mode confirmation delay, re-checked later) |
 | reason_code, reason, detail | rejection reason (see section 6) with the numbers that triggered it |
 | entry_reason | the engine's explanation of the setup |
 
@@ -105,7 +134,7 @@ slippage, latency (avg/max), MAE/MFE, rejects, rejection rate, top-3 rejection r
    filter `decision=REJECTED` and count `reason` per engine (Excel pivot or `tools/analyze_logs.py`).
 2. **"Why this trade?"** Find the ticket in `trades.csv` -> `setup_id`, `entry_reason`; then search the
    `signal_id` in `signals.csv` and the time in `ftf.log` (DEBUG shows all measured values).
-3. **"Why did it close early?"** `exit_reason` + `exit_detail` in `trades.csv`; `PM` lines in `ftf.log`.
+3. **"Why did it close early?"** `exit_reason` + `exit_detail` in `trades.csv`; `PMG` (exit decision) and `EXEC` (EXIT request / CLOSE OK) lines in `ftf.log`.
 4. **Pause / protection timeline:** filter `events.csv` by category.
 5. **Execution quality:** `slippage_pts`, `latency_ms`, `decision_ms` columns; panel row 5.
 6. **Compare MT4 vs MT5:** run the same preset on both and compare `stats.csv` per engine (docs/08 lists the

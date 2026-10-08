@@ -9,6 +9,8 @@
 > * `tools/ftf_spec.py` - every enum shown in the Inputs dialog and every input parameter
 >   (generated into `Inputs.mqh`, `Core/InputEnums.mqh`, `Core/Config.mqh`, `.set`, `.ini`, docs/05).
 > * `docs/03_Strategy_Logic.md` - exact trading rules of the 3 engines.
+> * `docs/09a_Public_API_Generated.md` - every public signature, generated from the code by
+>   `tools/gen_api_doc.py` (always current; if this file and 09a disagree, 09a reflects the code).
 
 ---
 
@@ -304,7 +306,11 @@ void   Warn (const string src,const string msg);
 void   Info (const string src,const string msg);
 void   Debug(const string src,const string msg);
 void   Trace(const string src,const string msg);
-void   Throttled(const int level,const string key,const int intervalMs,const string src,const string msg); // repeats summarised "(xN suppressed)"
+void   Log(const int level,const string src,const string msg);   // generic levelled entry point
+void   Throttled(const int level,const string key,const int intervalMs,const string src,const string msg); // repeats summarised "(+N similar suppressed)"
+void   FileOnly(const string src,const string msg);              // ftf.log only (configuration dump at start)
+bool   MakeFolder(const string path,const bool useCommon);       // every level of a folder path (Journal / StateStore use it)
+void   SetLevel(const int level); int Level(void); bool FileOk(void); string Tag(void);
 void   Flush(void);
 string Folder(void);
 ```
@@ -508,9 +514,10 @@ color EngineColor(const int engine);
 class CFtfContext
   {
 public:
-   CConfig *cfg; CLogger *log; CTradeJournal *journal; CStats *stats; CStateStore *state; CPlatform *pf;
+   CConfig *cfg; CLogger *logger; CTradeJournal *journal; CStats *stats; CStateStore *state; CPlatform *pf;
    CClock *clock; CTickBuffer *ticks; CMarketData *md; CH1Context *h1; CChartUI *ui;
    string symbol; int instanceId; long magicBase; int mode; long startMsc; long signalSeq;
+   string lastEvent;                              // "time CATEGORY/CODE detail" of the last Event() (panel)
    long   NextSignalId(void);
    long   NowMsc(void);                           // md.NowMsc() (pf.NowMsc() before md exists)
    int    EngineOfFamilyMagic(const long magic);  // engine id of any family magic
@@ -519,7 +526,7 @@ public:
    bool   IsFamilyMagic(const long magic);        // any instance of this magic base (engine 1..3)
    int    InstanceFromMagic(const long magic);
    string Tag(void);                              // "MT5|EURUSD|I1|AGGRESSIVE"
-   void   Event(const string category,const string code,const string detail); // journal + log INFO
+   void   Event(const string category,const string code,const string detail); // events.csv + ftf.log INFO (tag EVT) + lastEvent
   };
 ```
 
@@ -549,9 +556,10 @@ public:
   };
 ```
 `CEngineMomentum` adds `double ScoreFor(const int dir)` (0..100 internal momentum score).
-`CEngineFVG` keeps `SFvgZone m_zones[]` (struct declared in EngineFVG.mqh: `id dir top bottom ce t1 t3 created
-age mitigations trades state inside lastTouchMsc`). `CEngineRange` keeps the active range
-(`id state hi lo mid width touchesB touchesS createdBar`).
+`CEngineFVG` keeps `SFvgZone m_zones[]` (struct declared in EngineFVG.mqh: `id dir top bottom ce t1 t2 t3 ageBars
+mitigations trades state inside lastTouchMsc swingExtreme structOk endTime drawnState`). `CEngineRange` keeps the
+active box `SRangeBox` (EngineRange.mqh: `id state hi lo mid width tStart tDetect tEnd touchB touchS insideB insideS atr`).
+Every engine also exposes `string StatusLine(void)` for the panel; the exact public lists are in docs/09a.
 
 **Signal field conventions per engine:** `invalidation` = Momentum: broken micro-range edge (BUY: range high,
 SELL: range low); FVG: zone far edge (bullish: bottom, bearish: top); Range: boundary (BUY: lo, SELL: hi).
@@ -573,7 +581,10 @@ double LastEntryPrice(const int engine,const int dir,long &msc);
 void  SaveMeta(const int i); void SaveAll(void); void RemoveMeta(const ulong ticket);
 int   RecoverOnStart(void);                          // rebuild from platform + state, returns count
 ```
-Per-position state keys: `pos.<ticket>.{eng,dir,setup,isl,itp,omsc,smsc,sp,rp,slip,lat,dec,spr,ret,risk,eq,dd,h1,mode,er,tf,mae,mfe,be,tr}`.
+Per-position state keys: `pos.<ticket>.{eng,dir,setup,isl,itp,omsc,smsc,sp,rp,slip,lat,dec,spr,ret,risk,eq,dd,h1,mode,er,tf,mae,mfe,be,tr}`
+plus `{pid,op,lots,sl,tp,ref,pe,ped}` (position id, open price, lots, current SL/TP, engine reference level,
+pending exit code/detail) so that positions closed while the EA was offline are journaled with full data.
+Also public: `string Describe(void); bool SelfCheck(string &d);` (panel / 10 % verification).
 
 ### 7.15 Protections (Core/Protections.mqh)
 ```cpp
@@ -610,7 +621,7 @@ class CMultiInstanceGuard{ bool Init(CFtfContext*,CPositionTracker*); bool Acqui
 ### 7.18 Conflicts (Core/ConflictResolver.mqh)
 ```cpp
 class CConflictResolver { bool Init(CFtfContext*); int Resolve(SSignal &sigs[],const int n,int &reasons[],string &details[]);
-                          bool IsHolding(void); long HoldRemainingMs(void); string Describe(void); };
+                          bool IsHolding(void); long HoldRemainingMs(void); int Conflicts(void); string Describe(void); };
 class CSignalConfirmer  { bool Init(CFtfContext*); bool Add(const SSignal &s); int Count(void);
                           bool Get(const int i,SSignal &s); void RemoveAt(const int i); bool HasSetup(const string setupId); void Clear(void); };
 ```
@@ -623,15 +634,20 @@ directions exist this cycle, or a signal opposes another engine's signal seen wi
 class CExecutionEngine
   {
    bool Init(CFtfContext*,CPositionTracker*,CExecQualityGuard*);
-   int  Open(const SSignal &sig,const double lots,const double riskMoney,const int attempt,const ulong cycleStartUs,
-             STrackedPos &outPos,string &detail);       // FTF_OK, FTF_REJ_ORDER_FAILED (retry queued if transient)
+   int  OpenTrade(const SSignal &sig,const double lots,const double riskMoney,const int attempt,const ulong cycleStartUs,
+                  STrackedPos &outPos,string &detail);  // FTF_OK, FTF_REJ_ORDER_FAILED (retry queued if transient)
    bool PopDueRetry(SSignal &sig,double &lots,double &riskMoney,int &attempt);
    int  PendingRetries(void);
    bool InErrorCooldown(string &detail);
-   bool Close(const int idx,const int exitCode,const string detail);    // tracker index; sets pendingExit, retried next cycles
+   bool CloseTrade(const int idx,const int exitCode,const string detail); // tracker index; sets pendingExit, retried next cycles
    bool ModifySL(const int idx,const double newSL,const string why);    // checks stops/freeze/min interval
    int  DeviationPts(void);
+   string Describe(void); bool SelfCheck(string &d); string LastError(void);
   };
+```
+`Open`/`Close` are deliberately NOT used as method names: they are reserved series names in MQL4
+(`check_core.py` rejects them in Core).
+```cpp
 ```
 
 ### 7.20 `CSafetyGate` (Core/SafetyGate.mqh)
@@ -639,16 +655,19 @@ class CExecutionEngine
 bool Init(CFtfContext*,CEngineManager*,CPositionTracker*,CDrawdownGuard*,CConsecLossGuard*,CExecQualityGuard*,
           CNewsFilter*,CSessionFilter*,CRolloverFilter*,CRiskManager*,CExposureGuard*,CMultiInstanceGuard*,
           CExecutionEngine*,CConflictResolver*);
+void BeginCycle(void);                     // clears the per-cycle GlobalCheck cache (controller, step 7)
 int  GlobalCheck(string &detail);          // once per cycle, cached; order in section 8
 int  LastGlobal(void); string LastGlobalDetail(void);
 int  CheckSignal(SSignal &sig,double &lots,double &riskMoney,string &detail); // may adjust sig.sl/tp (stops policy)
 int  Revalidate(SSignal &sig,string &detail);  // before retry/confirm: engine validity, expiry, drift, spread, terminal
+string SpreadLimitText(void);                  // "spread 12.0 / max 25.0 pts" (panel)
 ```
 
 ### 7.21 `CPositionManager` (Core/PositionManager.mqh)
 ```cpp
 bool Init(CFtfContext*,CPositionTracker*,CExecutionEngine*,CEngineManager*);
 void Manage(void);      // for each own position: MAE/MFE, pending exit retry, engine exit, time-stop, hard max, BE, trailing
+string Describe(void); bool SelfCheck(string &d);
 ```
 
 ### 7.22 `CEngineManager` (Core/EngineManager.mqh)
@@ -677,11 +696,11 @@ OnTick / OnTimer
  5. tracker.Sync()                     closed positions -> exit reason, journal.LogTrade, stats, consec/martingale, engine.OnClosed, UI exit
  6. posMgr.Manage()                    exits, time-stops, BE, trailing (always runs, also during any pause/filter)
  7. gate.GlobalCheck()                 cached reason for this cycle
- 8. retries: exec.PopDueRetry -> gate.Revalidate -> exec.Open
+ 8. retries: exec.PopDueRetry -> gate.Revalidate -> exec.OpenTrade
  9. confirmations: confirmer items -> engine.IsStillValid -> when delay elapsed -> step 11
 10. engineMgr.Evaluate()               signals (only on new tick; engines skipped while not warm)
     stats.OnSetup for each; resolver.Resolve (conflict/expiry)
-11. for each signal (quality order):  global reason? -> gate.CheckSignal (lots) -> confirm-delay? -> exec.Open
+11. for each signal (quality order):  global reason? -> gate.CheckSignal (lots) -> confirm-delay? -> exec.OpenTrade
     -> journal.LogSignal (+ stats.OnReject or OnEntry), engine.OnEntry, tracker.Add, ui.DrawEntry
 12. periodic: state save (2 s), MI heartbeat (2 s), news refresh, exposure refresh, stats.csv, panel (InpPanelRefreshMs)
 ```
@@ -729,4 +748,6 @@ Colors: Momentum `clrDodgerBlue`, FVG `clrOrange`, Range `clrMediumOrchid`; BUY 
 3. Core change -> edit the MQL5 copy, run `python3 tools/check_core.py --sync` to copy into MQL4, then
    `python3 tools/check_core.py` (identity + forbidden-API scan).
 4. Platform change -> edit both `Platform.mqh` files with the same public API.
-5. Compile both EAs in MetaEditor (F7): 0 errors, 0 warnings expected.
+5. Run `python3 tools/check_api.py` (member resolution + call arity across modules) and
+   `python3 tools/gen_api_doc.py` (regenerates docs/09a; `--check` fails when it is stale).
+6. Compile both EAs in MetaEditor (F7): 0 errors, 0 warnings expected.
